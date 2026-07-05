@@ -15,11 +15,11 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test test/**.test.js"
+    "test": "node --test test/*.test.js"
   },
   "license": "MIT",
   "dependencies": {
     "@inquirer/prompts": "^8.5.2",
-    "commander": "^15.0.0"
+    "commander": "^13.1.0"
   }
 }
