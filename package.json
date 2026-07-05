@@ -1,0 +1,25 @@
+{
+  "name": "@betterdan/ai-memory",
+  "version": "0.1.0",
+  "description": "AI memory + requirements workflow scaffolder for Claude Code & Codex",
+  "type": "module",
+  "bin": {
+    "ai-memory": "bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "templates"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/**.test.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@inquirer/prompts": "^8.5.2",
+    "commander": "^15.0.0"
+  }
+}
