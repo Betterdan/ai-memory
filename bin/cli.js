@@ -21,6 +21,16 @@ program
     const targetDir = process.cwd();
     let { name, stack, tools: toolsRaw } = opts;
 
+    // Validate CLI-supplied --tools before entering interactive prompts
+    if (toolsRaw !== undefined) {
+      for (const t of toolsRaw.split(',').map(s => s.trim()).filter(Boolean)) {
+        if (t !== 'claude' && t !== 'codex') {
+          console.error(`tools 仅支持 claude、codex,收到: ${t}`);
+          process.exit(1);
+        }
+      }
+    }
+
     let importFrom = opts.import;
     if (!opts.yes) {
       const { input, checkbox } = await import('@inquirer/prompts');
@@ -42,11 +52,8 @@ program
     toolsRaw ??= 'claude,codex';
 
     const tools = toolsRaw.split(',').map(s => s.trim()).filter(Boolean);
-    for (const t of tools) {
-      if (t !== 'claude' && t !== 'codex') {
-        console.error(`tools 仅支持 claude、codex,收到: ${t}`);
-        process.exit(1);
-      }
+    if (tools.length === 0) {
+      console.log('未启用任何工具适配,仅生成 .ai/ 通用层');
     }
 
     const onConflict = opts.yes
@@ -63,4 +70,11 @@ program
     console.log('下一步:打开项目让 agent 读 .ai/memory/MEMORY.md;把项目命令补进 CLAUDE.md/AGENTS.md。');
   });
 
-program.parseAsync();
+program.parseAsync().catch((e) => {
+  if (e.name === 'ExitPromptError') {
+    console.log('已取消');
+  } else {
+    console.error('错误: ' + e.message);
+  }
+  process.exit(1);
+});

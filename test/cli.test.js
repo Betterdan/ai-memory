@@ -35,10 +35,19 @@ test('init --yes 冲突时跳过既有文件', async () => {
   assert.ok(stdout.includes('跳过 1'));
 });
 
-test('非法 --tools 值报错退出', async () => {
+test('非法 --tools 值报错退出(验证在交互前)', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-'));
   await assert.rejects(
     run(process.execPath, [CLI, 'init', '--tools', 'cursor', '--yes'], { cwd: dir }),
     /tools 仅支持 claude、codex/
   );
+});
+
+test('--tools "" 空工具:输出提示且正常退出,仅生成通用层', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-'));
+  const { stdout } = await run(process.execPath, [CLI, 'init', '--tools', '', '--yes'], { cwd: dir });
+  assert.ok(stdout.includes('未启用任何工具适配'), `期望提示未启用工具, 实际: ${stdout}`);
+  await assert.rejects(access(path.join(dir, 'CLAUDE.md')), '不应生成 CLAUDE.md');
+  await assert.rejects(access(path.join(dir, 'AGENTS.md')), '不应生成 AGENTS.md');
+  await access(path.join(dir, '.ai/memory/MEMORY.md')); // 通用层应存在
 });

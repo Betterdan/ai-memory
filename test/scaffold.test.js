@@ -40,11 +40,32 @@ test('冲突:overwrite 则覆盖', async () => {
   assert.equal(await readFile(path.join(dir, 'a.md'), 'utf8'), 'A\n');
 });
 
-test('importFrom:存在的 user-profile/feedback 覆盖生成物', async () => {
+test('importFrom:存在的 user-profile 以导入内容写入,计入 written', async () => {
   const src = await tmp();
   await mkdir(path.join(src, '.ai', 'memory'), { recursive: true });
   await writeFile(path.join(src, '.ai', 'memory', 'user-profile.md'), 'IMPORTED\n');
   const dir = await tmp();
-  await scaffold({ templatesRoot: ROOT, targetDir: dir, vars: VARS, tools: ['claude'], onConflict: () => 'skip', importFrom: src });
+  const r = await scaffold({ templatesRoot: ROOT, targetDir: dir, vars: VARS, tools: ['claude'], onConflict: () => 'skip', importFrom: src });
   assert.equal(await readFile(path.join(dir, '.ai', 'memory', 'user-profile.md'), 'utf8'), 'IMPORTED\n');
+  assert.ok(r.written.includes('.ai/memory/user-profile.md'), '应计入 written');
+});
+
+test('importFrom + 冲突 skip:目标已有 user-profile 时内容不变且计入 skipped', async () => {
+  const src = await tmp();
+  await mkdir(path.join(src, '.ai', 'memory'), { recursive: true });
+  await writeFile(path.join(src, '.ai', 'memory', 'user-profile.md'), 'IMPORTED\n');
+  const dir = await tmp();
+  await mkdir(path.join(dir, '.ai', 'memory'), { recursive: true });
+  await writeFile(path.join(dir, '.ai', 'memory', 'user-profile.md'), 'SENTINEL\n');
+  const r = await scaffold({ templatesRoot: ROOT, targetDir: dir, vars: VARS, tools: ['claude'], onConflict: () => 'skip', importFrom: src });
+  assert.equal(await readFile(path.join(dir, '.ai', 'memory', 'user-profile.md'), 'utf8'), 'SENTINEL\n');
+  assert.ok(r.skipped.includes('.ai/memory/user-profile.md'), '应计入 skipped');
+});
+
+test('importFrom:源目录缺文件时回退模板内容', async () => {
+  const src = await tmp(); // empty, no user-profile.md
+  const dir = await tmp();
+  const r = await scaffold({ templatesRoot: ROOT, targetDir: dir, vars: VARS, tools: ['claude'], onConflict: () => 'skip', importFrom: src });
+  assert.equal(await readFile(path.join(dir, '.ai', 'memory', 'user-profile.md'), 'utf8'), 'TEMPLATE_PROFILE\n');
+  assert.ok(r.written.includes('.ai/memory/user-profile.md'));
 });

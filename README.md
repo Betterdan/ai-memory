@@ -14,6 +14,8 @@ npx @betterdan/ai-memory init --name demo --stack "PHP + Vue" --tools claude,cod
 npx @betterdan/ai-memory init --import /path/to/other-project
 ```
 
+`--import` 从已有项目导入 user-profile/feedback;目标文件已存在时按冲突策略处理(--yes 下跳过,交互下询问),绝不静默覆盖。
+
 ## 设计
 
 - 单一源:所有正文只在 `.ai/`,`.claude/`、`.agents/` 只是触发包装

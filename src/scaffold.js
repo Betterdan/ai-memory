@@ -1,7 +1,9 @@
-import { mkdir, readFile, writeFile, access, copyFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, access } from 'node:fs/promises';
 import path from 'node:path';
 import { buildManifest } from './manifest.js';
 import { render } from './render.js';
+
+const IMPORT_DESTS = new Set(['.ai/memory/user-profile.md', '.ai/memory/feedback.md']);
 
 export async function scaffold({ templatesRoot, targetDir, vars, tools, onConflict, importFrom }) {
   const manifest = await buildManifest(templatesRoot, tools);
@@ -11,20 +13,19 @@ export async function scaffold({ templatesRoot, targetDir, vars, tools, onConfli
     if (await exists(destPath)) {
       if ((await onConflict(dest)) !== 'overwrite') { summary.skipped.push(dest); continue; }
     }
-    const raw = await readFile(src, 'utf8');
-    await mkdir(path.dirname(destPath), { recursive: true });
-    await writeFile(destPath, render(raw, vars));
-    summary.written.push(dest);
-  }
-  if (importFrom) {
-    for (const name of ['user-profile.md', 'feedback.md']) {
-      const from = path.join(importFrom, '.ai', 'memory', name);
-      if (await exists(from)) {
-        const to = path.join(targetDir, '.ai', 'memory', name);
-        await mkdir(path.dirname(to), { recursive: true });
-        await copyFile(from, to);
+    let content;
+    if (importFrom && IMPORT_DESTS.has(dest)) {
+      const importSrc = path.join(importFrom, '.ai', 'memory', path.basename(dest));
+      if (await exists(importSrc)) {
+        content = await readFile(importSrc, 'utf8');
       }
     }
+    if (content === undefined) {
+      content = render(await readFile(src, 'utf8'), vars);
+    }
+    await mkdir(path.dirname(destPath), { recursive: true });
+    await writeFile(destPath, content);
+    summary.written.push(dest);
   }
   return summary;
 }
