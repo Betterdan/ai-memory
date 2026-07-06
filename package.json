@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "@betterdan/ai-memory",
   "version": "0.1.0",
   "description": "AI memory + requirements workflow scaffolder for Claude Code & Codex",
@@ -12,7 +12,7 @@
     "templates"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=20.17.0"
   },
   "scripts": {
     "test": "node --test test/*.test.js"

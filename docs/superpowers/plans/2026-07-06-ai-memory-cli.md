@@ -6,7 +6,9 @@
 
 **Architecture:** 纯文件复制 + 变量渲染,无 LLM、无网络。三层分离:`templates/`(按 common/claude/codex 分组的模板)→ `src/`(render/manifest/scaffold 纯函数核心,可注入 templatesRoot 便于测试)→ `bin/cli.js`(commander 参数 + inquirer 交互,薄壳)。
 
-**Tech Stack:** Node.js ≥20、ESM、`node --test` 内置测试框架、commander、@inquirer/prompts。
+**Tech Stack:** Node.js ≥20.17、ESM、`node --test` 内置测试框架、commander@13、@inquirer/prompts@8。
+
+> 执行期修订(2026-07-06):测试脚本用 `node --test test/*.test.js` 而非 `node --test test/` —— 后者在 Node 26/Windows 下把目录当模块解析报 MODULE_NOT_FOUND(已实测);glob 形式在 POSIX(shell 展开)与 Windows(Node 内部 glob)均正确。engines 定为 `>=20.17.0`(@inquirer/prompts@8 的下限);commander 钉 ^13(15 需要 Node ≥22.12,违反本约束)。
 
 ## Global Constraints
 
