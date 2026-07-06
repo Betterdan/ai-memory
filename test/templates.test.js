@@ -27,13 +27,26 @@ export const EXPECTED_COMMON = [
   'docs/requirements/v1.0.0/draft/.gitkeep',
   'docs/requirements/v1.0.0/final/.gitkeep',
 ];
-export const EXPECTED_CLAUDE = [];
+export const EXPECTED_CLAUDE = [
+  '.claude/agents/critic.md',
+  '.claude/commands/critic.md',
+  '.claude/commands/finalize-requirement.md',
+  '.claude/commands/new-requirement.md',
+  '.claude/commands/update-memory.md',
+  '.claude/settings.json',
+  '.claude/skills/critic/SKILL.md',
+  '.claude/skills/memory-update/SKILL.md',
+  '.claude/skills/requirements-flow/SKILL.md',
+  'CLAUDE.md',
+];
 export const EXPECTED_CODEX = [];
 
 test('真实模板清单与期望一致', async () => {
   const m = await buildManifest(ROOT, ['claude', 'codex']);
-  const expected = [...EXPECTED_COMMON, ...EXPECTED_CLAUDE, ...EXPECTED_CODEX].sort((a, b) => a.localeCompare(b));
-  assert.deepEqual(m.map(e => e.dest).sort((a, b) => a.localeCompare(b)), expected);
+  // 与 buildManifest 相同的码点排序,保持顺序断言
+  const expected = [...EXPECTED_COMMON, ...EXPECTED_CLAUDE, ...EXPECTED_CODEX]
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  assert.deepEqual(m.map(e => e.dest), expected);
 });
 
 test('scaffold 真实模板:渲染后无残留 {{ 且变量已替换', async () => {

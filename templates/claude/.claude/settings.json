@@ -1,0 +1,24 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[ai-memory] 会话收尾:请确认本次进展已按节点式协议写入 .ai/memory/session-log.md'"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[ai-memory] 上下文即将压缩:请先把关键进展写入 .ai/memory/session-log.md'"
+          }
+        ]
+      }
+    ]
+  }
+}
