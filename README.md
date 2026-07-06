@@ -1,4 +1,4 @@
-# @betterdan/ai-memory
+# @betterdanlins/ai-memory
 
 AI 记忆 + 需求工作流脚手架:一条命令在项目里生成跨 Claude Code / Codex 的
 记忆层(.ai/memory)、方法论层(.ai/skills)、需求版本目录(docs/requirements)
@@ -7,11 +7,11 @@ AI 记忆 + 需求工作流脚手架:一条命令在项目里生成跨 Claude Co
 ## 用法
 
 ```bash
-npx @betterdan/ai-memory init
+npx @betterdanlins/ai-memory init
 # 非交互:
-npx @betterdan/ai-memory init --name demo --stack "PHP + Vue" --tools claude,codex --yes
+npx @betterdanlins/ai-memory init --name demo --stack "PHP + Vue" --tools claude,codex --yes
 # 从已有项目导入用户级记忆:
-npx @betterdan/ai-memory init --import /path/to/other-project
+npx @betterdanlins/ai-memory init --import /path/to/other-project
 ```
 
 `--import` 从已有项目导入 user-profile/feedback;目标文件已存在时按冲突策略处理(--yes 下跳过,交互下询问),绝不静默覆盖。

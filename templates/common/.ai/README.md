@@ -1,7 +1,7 @@
 # .ai/ — 跨 Agent 知识框架({{projectName}})
 
 本目录是 agent-agnostic 的项目知识库,Claude Code、Codex 等所有 AI 工具共享同一份内容。
-由 @betterdan/ai-memory 生成于 {{date}}。
+由 @betterdanlins/ai-memory 生成于 {{date}}。
 
 ## 进场协议(每次会话开始)
 

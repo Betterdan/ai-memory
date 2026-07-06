@@ -1,5 +1,5 @@
 {
-  "name": "@betterdan/ai-memory",
+  "name": "@betterdanlins/ai-memory",
   "version": "0.1.0",
   "description": "AI memory + requirements workflow scaffolder for Claude Code & Codex",
   "type": "module",
@@ -20,7 +20,7 @@
   "license": "MIT",
   "author": "Betterdan",
   "keywords": ["ai", "memory", "claude-code", "codex", "scaffold", "cli"],
-  "repository": {"type": "git", "url": "git+https://github.com/betterdan/ai-memory.git"},
+  "repository": {"type": "git", "url": "git+https://github.com/Betterdan/ai-memory.git"},
   "publishConfig": {"access": "public"},
   "dependencies": {
     "@inquirer/prompts": "^8.5.2",
