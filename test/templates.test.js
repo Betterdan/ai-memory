@@ -39,7 +39,12 @@ export const EXPECTED_CLAUDE = [
   '.claude/skills/requirements-flow/SKILL.md',
   'CLAUDE.md',
 ];
-export const EXPECTED_CODEX = [];
+export const EXPECTED_CODEX = [
+  '.agents/skills/critic/SKILL.md',
+  '.agents/skills/memory-update/SKILL.md',
+  '.agents/skills/requirements-flow/SKILL.md',
+  'AGENTS.md',
+];
 
 test('真实模板清单与期望一致', async () => {
   const m = await buildManifest(ROOT, ['claude', 'codex']);
