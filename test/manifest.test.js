@@ -8,12 +8,12 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures',
 
 test('both tools:common+claude+codex 全收集,dest 排序', async () => {
   const m = await buildManifest(ROOT, ['claude', 'codex']);
-  assert.deepEqual(m.map(e => e.dest), ['AGENTS.md', 'CLAUDE.md', 'a.md', 'sub/b.md']);
+  assert.deepEqual(m.map(e => e.dest), ['AGENTS.md', 'CLAUDE.md', 'a.md', 'sub/b.md', 'vars.md']);
 });
 
 test('只选 claude 时排除 codex 组', async () => {
   const m = await buildManifest(ROOT, ['claude']);
-  assert.deepEqual(m.map(e => e.dest), ['CLAUDE.md', 'a.md', 'sub/b.md']);
+  assert.deepEqual(m.map(e => e.dest), ['CLAUDE.md', 'a.md', 'sub/b.md', 'vars.md']);
 });
 
 test('src 是存在的绝对路径', async () => {
