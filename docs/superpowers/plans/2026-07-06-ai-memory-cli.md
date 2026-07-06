@@ -17,7 +17,7 @@
 - 模板变量只有三个:`{{projectName}}`、`{{techStack}}`、`{{date}}`
 - 幂等:目标文件已存在时逐个询问 overwrite/skip,绝不静默覆盖;`--yes` 非交互模式一律 skip
 - 所有模板 UTF-8 + LF;所有生成物为可入库文本,模板不含目标项目的 .gitignore
-- 每个 Task 结束必须 `node --test test/` 全绿再 commit
+- 每个 Task 结束必须 `npm test`(即 `node --test test/*.test.js`)全绿再 commit
 
 ---
 
