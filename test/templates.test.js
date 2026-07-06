@@ -18,6 +18,14 @@ export const EXPECTED_COMMON = [
   '.ai/memory/session-log.md',
   '.ai/memory/user-profile.md',
   '.ai/README.md',
+  '.ai/skills/architecture.md',
+  '.ai/skills/code-review.md',
+  '.ai/skills/critic.md',
+  '.ai/skills/memory-update.md',
+  '.ai/skills/requirements-flow.md',
+  'docs/requirements/README.md',
+  'docs/requirements/v1.0.0/draft/.gitkeep',
+  'docs/requirements/v1.0.0/final/.gitkeep',
 ];
 export const EXPECTED_CLAUDE = [];
 export const EXPECTED_CODEX = [];
