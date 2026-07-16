@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { buildManifest } from './manifest.js';
 import { matchesLegacyV01Baseline } from './legacy-v0.1.js';
+import { hasValidManagedBlock, isManagedBlockFile, replaceManagedBlock } from './managed-blocks.js';
 import { migrationsBetween } from './migrations.js';
 import { assertNoSymlinkPath, resolveSafeDestination } from './path-safety.js';
 import { render } from './render.js';
@@ -111,6 +112,9 @@ export async function planFrameworkUpdate({ targetDir, templatesRoot, frameworkV
 
     const currentHash = hashContent(current);
     const desiredHash = hashContent(desired);
+    if (isManagedBlockFile(dest) && !hasValidManagedBlock(desired)) {
+      throw new Error(`受管模板缺少有效 managed 标记: ${dest}`);
+    }
     if (currentHash === desiredHash) {
       actions.push({ action: 'unchanged', dest, ownership });
     } else if (ownership === 'user') {
@@ -119,18 +123,33 @@ export async function planFrameworkUpdate({ targetDir, templatesRoot, frameworkV
       const matchesBaseline = installation.kind === 'metadata'
         ? installation.metadata.files[dest]?.sha256 === currentHash
         : matchesLegacyV01Baseline(dest, current, vars);
-      const action = matchesBaseline ? 'update' : ownership === 'mixed' ? 'merge' : 'review';
-      actions.push({ action, dest, ownership, currentHash, desiredHash });
+      if (isManagedBlockFile(dest) && hasValidManagedBlock(current)) {
+        const merged = replaceManagedBlock(current, desired);
+        actions.push({
+          action: merged === current ? 'unchanged' : 'update-managed',
+          dest, ownership, currentHash, desiredHash,
+        });
+      } else {
+        const action = matchesBaseline ? 'update' : ownership === 'mixed' ? 'merge' : 'review';
+        actions.push({ action, dest, ownership, currentHash, desiredHash });
+      }
     }
   }
 
   if (installation.kind === 'metadata') {
     for (const [dest, record] of Object.entries(installation.metadata.files)) {
-      if (desiredDests.has(dest) || !(await exists(path.join(targetDir, ...dest.split('/'))))) continue;
+      const destPath = resolveSafeDestination(targetDir, dest);
+      const current = await readOptional(destPath);
+      if (desiredDests.has(dest) || current === undefined) continue;
+      const currentHash = hashContent(current);
+      const canRemove = record.ownership === 'framework'
+        && ownershipFor(dest) === 'framework'
+        && record.sha256 === currentHash;
       actions.push({
-        action: record.ownership === 'user' ? 'preserve' : 'review-remove',
+        action: record.ownership === 'user' ? 'preserve' : canRemove ? 'remove' : 'review-remove',
         dest,
         ownership: record.ownership,
+        currentHash,
       });
     }
   }
@@ -161,26 +180,46 @@ export async function applyFrameworkUpdate({ targetDir, templatesRoot, plan }) {
   const sources = new Map(manifest.map(entry => [entry.dest, entry.src]));
   const candidates = [];
 
-  for (const action of plan.actions.filter(item => item.action === 'add' || item.action === 'update')) {
+  for (const action of plan.actions.filter(item => ['add', 'update', 'update-managed', 'remove'].includes(item.action))) {
+    if (action.action === 'remove') {
+      const destPath = resolveSafeDestination(targetDir, action.dest);
+      await assertNoSymlinkPath(targetDir, destPath);
+      const current = await readFile(destPath, 'utf8');
+      if (hashContent(current) !== action.currentHash) {
+        throw new Error(`文件在预检后发生变化,请重新 dry-run: ${action.dest}`);
+      }
+      candidates.push({ ...action, destPath });
+      continue;
+    }
     const src = sources.get(action.dest);
     if (!src) throw new Error(`升级计划缺少当前模板: ${action.dest}`);
     const destPath = resolveSafeDestination(targetDir, action.dest);
     await assertNoSymlinkPath(targetDir, destPath);
-    if (action.action === 'update') {
-      const current = await readFile(destPath, 'utf8');
+    let current;
+    if (action.action !== 'add') {
+      current = await readFile(destPath, 'utf8');
       if (action.currentHash && hashContent(current) !== action.currentHash) {
         throw new Error(`文件在预检后发生变化,请重新 dry-run: ${action.dest}`);
       }
     }
-    candidates.push({ ...action, destPath, content: render(await readFile(src, 'utf8'), vars) });
+    const desired = render(await readFile(src, 'utf8'), vars);
+    const content = action.action === 'update-managed'
+      ? replaceManagedBlock(current, desired)
+      : desired;
+    candidates.push({ ...action, destPath, content });
   }
 
-  const summary = { written: [], skipped: [], imported: [], fallback: [] };
+  const summary = { written: [], removed: [], skipped: [], imported: [], fallback: [] };
   for (const [index, item] of candidates.entries()) {
     try {
-      await mkdir(path.dirname(item.destPath), { recursive: true });
-      await writeFile(item.destPath, item.content, { flag: item.action === 'add' ? 'wx' : 'w' });
-      summary.written.push(item.dest);
+      if (item.action === 'remove') {
+        await unlink(item.destPath);
+        summary.removed.push(item.dest);
+      } else {
+        await mkdir(path.dirname(item.destPath), { recursive: true });
+        await writeFile(item.destPath, item.content, { flag: item.action === 'add' ? 'wx' : 'w' });
+        summary.written.push(item.dest);
+      }
     } catch (err) {
       throw new ScaffoldError({
         phase: 'update', dest: item.dest, destPath: item.destPath, cause: err, summary,

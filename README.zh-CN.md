@@ -44,6 +44,14 @@ npx @betterdanlins/ai-memory models configure --profile balanced
 
 ## 版本与兼容性
 
+### v0.5.0 —— 入口文件受管区块
+
+- 为生成的 `AGENTS.md` 和 `CLAUDE.md` 框架区域增加明确的 `ai-memory:managed` 标记。后续升级只替换该区块,区块外的项目命令和自定义规则保持不变。
+- 未修改的 v0.4.0 入口文件可依据生成基线哈希自动迁移为带标记结构。已经修改且没有标记的 v0.4.0 文件需要一次人工合并;标记建立后,后续框架升级不再与用户区块修改冲突。
+- 标记缺失、重复或格式损坏时保守拒绝自动合并,不会退化为整文件覆盖。写入受管区块前还会再次核对当前文件哈希。
+- `.claude/settings.json` 仍是混合 JSON 文件;框架和用户都修改时继续要求审查,不会向 JSON 强行加入 Markdown 标记。
+- 修复 npm 自动改名 `.gitignore` 模板的问题,并安全替换未修改的 v0.4.0 `.ai/runs/.npmignore`;若该废弃文件被本地修改,仍要求人工审查。
+
 ### v0.4.0 —— 分阶段模型路由与可靠交接
 
 - 新增可选的 `inherit`、`balanced`、`quality` profile。新项目和升级项目默认保持 `inherit`,安装 v0.4.0 不会静默增加模型成本,也不会改变 v0.3.0 的工作流深度。
@@ -72,6 +80,15 @@ npx @betterdanlins/ai-memory@0.4.0 models configure --profile balanced
 ```
 
 升级完成后 profile 仍为 `inherit`,只有显式配置才会改变。不要在已有 v0.3.0 项目重新运行 `init`。若 dry-run 出现 merge/review 项,应以新生成的 v0.4.0 文件为参考人工合并,然后重新执行 dry-run。
+
+### 从 v0.4.0 升级到 v0.5.0
+
+```bash
+npx @betterdanlins/ai-memory@0.5.0 update --dry-run
+npx @betterdanlins/ai-memory@0.5.0 update --yes
+```
+
+如果 `AGENTS.md` 或 `CLAUDE.md` 仍是未修改的 v0.4.0 生成版本,会自动迁移。若无标记入口已被定制,dry-run 会报告 `merge`;应对照全新 v0.5.0 参考文件,把项目内容放进 user 区块后重试。标记建立后,只在 `<!-- ai-memory:managed:start/end -->` 之外编辑。
 
 ## 生成什么
 
@@ -141,6 +158,7 @@ AGENTS.md + .agents/ + .codex/# Codex:skills 与分层自定义 agents
 - **render** —— 替换 `{{变量}}` 占位符,遇到任何未定义变量即抛错,让坏掉的模板大声失败,而不是把 `{{...}}` 发出去。
 - **scaffold** —— 预检安全目标路径和符号链接,处理冲突并在内存中完成全部读取/渲染后再逐个写入;提供 `--import` 时先校验导入目录,再从中拉取 `user-profile` / `feedback`(单个源文件缺失则回退到模板并明确报告)。
 - **framework metadata** —— 全新 init 记录 framework/schema 版本、文件所有权和生成哈希;update 据此区分安全更新与用户修改。无元数据的 v0.1 项目按 legacy 保守规划。
+- **managed entry blocks** —— Markdown 入口只更新通过校验的框架区块;无标记或标记损坏的定制文件仍人工合并,JSON settings 继续采用保守整文件审查。
 - **model routing** —— 可选 profile 把现有阶段映射为 premium、standard、economy、inherit 或无模型执行;Claude/Codex 使用原生自定义 agent 配置,路由不会增加 S/M/L 阶段。
 - **workflow handoff** —— 本地清单只用路径和 SHA-256 引用正式需求/设计/计划;输入过期、未决问题、路由变化、路径越界或符号链接都会关闭式失败。
 

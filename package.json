@@ -1,6 +1,6 @@
 {
   "name": "@betterdanlins/ai-memory",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "AI memory + requirements workflow scaffolder for Claude Code & Codex",
   "type": "module",
   "bin": {

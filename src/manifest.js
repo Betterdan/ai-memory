@@ -13,12 +13,18 @@ export async function buildManifest(templatesRoot, tools) {
     if (!enabled(tools)) continue;
     const groupDir = path.join(templatesRoot, group);
     for (const rel of await walk(groupDir, '')) {
-      entries.push({ src: path.join(groupDir, ...rel.split('/')), dest: rel });
+      entries.push({ src: path.join(groupDir, ...rel.split('/')), dest: templateDestination(rel) });
     }
   }
   const sorted = entries.sort((a, b) => a.dest < b.dest ? -1 : a.dest > b.dest ? 1 : 0);
   assertUniqueDestinations(sorted);
   return sorted;
+}
+
+function templateDestination(rel) {
+  return rel.endsWith('/.gitignore.template') || rel === '.gitignore.template'
+    ? rel.slice(0, -'.template'.length)
+    : rel;
 }
 
 function assertUniqueDestinations(entries) {

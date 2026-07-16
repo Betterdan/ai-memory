@@ -203,8 +203,9 @@ program
     printUpdatePlan(plan);
     if (opts.yes) {
       const result = await applyFrameworkUpdate({ targetDir: process.cwd(), templatesRoot: TEMPLATES, plan });
-      console.log(`安全更新完成:写入 ${result.written.length}`);
+      console.log(`安全更新完成:写入 ${result.written.length},移除 ${result.removed.length}`);
       for (const dest of result.written) console.log(`  ${dest}`);
+      for (const dest of result.removed) console.log(`  移除 ${dest}`);
     }
   });
 
@@ -216,6 +217,10 @@ program.parseAsync().catch((e) => {
     if (e.name === 'ScaffoldError') {
       console.error(`已写入 ${e.summary.written.length}:`);
       for (const d of e.summary.written) console.error(`  ${d}`);
+      if (e.summary.removed?.length) {
+        console.error(`已移除 ${e.summary.removed.length}:`);
+        for (const d of e.summary.removed) console.error(`  ${d}`);
+      }
       console.error(`尚未写入 ${e.notWritten.length}:`);
       for (const d of e.notWritten) console.error(`  ${d}`);
       if (e.summary.skipped.length) {
@@ -238,6 +243,8 @@ function printUpdatePlan(plan) {
   const groups = [
     ['add', '新增'],
     ['update', '可安全更新'],
+    ['update-managed', '更新受管区块'],
+    ['remove', '安全移除'],
     ['merge', '需要合并'],
     ['review', '需要人工审查'],
     ['review-remove', '需要确认移除'],

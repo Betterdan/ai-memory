@@ -23,6 +23,18 @@ test('src 是存在的绝对路径', async () => {
   for (const e of m) assert.ok(path.isAbsolute(e.src));
 });
 
+test('.gitignore.template 映射为 .gitignore,避免 npm pack 自动改名', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'ai-memory-manifest-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const src = path.join(root, 'common', '.ai', 'runs', '.gitignore.template');
+  await mkdir(path.dirname(src), { recursive: true });
+  await writeFile(src, '*\n!.gitignore\n');
+
+  const manifest = await buildManifest(root, []);
+  assert.deepEqual(manifest.map(item => item.dest), ['.ai/runs/.gitignore']);
+  assert.equal(manifest[0].src, src);
+});
+
 test('组目录不存在时视为空组', async () => {
   const m = await buildManifest(path.join(ROOT, '..'), ['claude', 'codex']);
   assert.deepEqual(m, []);

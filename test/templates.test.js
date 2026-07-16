@@ -183,3 +183,13 @@ test('模型路由 common 单一源、双工具原生代理和默认继承保持
   await readFile(path.join(ROOT, 'codex', '.codex', 'agents', 'premium_implementer.toml'), 'utf8');
   await readFile(path.join(ROOT, 'codex', '.codex', 'agents', 'standard_test_worker.toml'), 'utf8');
 });
+
+test('AGENTS.md 与 CLAUDE.md 使用唯一受管区块并保留用户区块', async () => {
+  for (const entry of ['codex/AGENTS.md', 'claude/CLAUDE.md']) {
+    const body = await readFile(path.join(ROOT, ...entry.split('/')), 'utf8');
+    assert.equal(body.match(/<!-- ai-memory:managed:start -->/g)?.length, 1);
+    assert.equal(body.match(/<!-- ai-memory:managed:end -->/g)?.length, 1);
+    assert.equal(body.match(/<!-- ai-memory:user:start -->/g)?.length, 1);
+    assert.equal(body.match(/<!-- ai-memory:user:end -->/g)?.length, 1);
+  }
+});

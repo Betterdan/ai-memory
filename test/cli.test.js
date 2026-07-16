@@ -236,3 +236,24 @@ test('workflow prepare/verify 检测正式输入变化', async () => {
     /交接输入已变化/
   );
 });
+
+test('update 只替换 AGENTS.md 受管区块并保留用户内容', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-managed-'));
+  await run(process.execPath, [CLI, 'init', '--tools', 'codex', '--yes'], { cwd: dir });
+  const agentsPath = path.join(dir, 'AGENTS.md');
+  const original = await readFile(agentsPath, 'utf8');
+  const customized = original
+    .replace('进场先读 `.ai/memory/MEMORY.md`', 'BROKEN_MANAGED')
+    .replace('<!-- 在此补充启动/测试/构建命令 -->', 'USER_CUSTOM_COMMAND=npm test');
+  await writeFile(agentsPath, customized);
+
+  const preview = await run(process.execPath, [CLI, 'update', '--dry-run'], { cwd: dir });
+  assert.ok(preview.stdout.includes('更新受管区块 1'));
+  const applied = await run(process.execPath, [CLI, 'update', '--yes'], { cwd: dir });
+  assert.ok(applied.stdout.includes('安全更新完成'));
+
+  const result = await readFile(agentsPath, 'utf8');
+  assert.ok(!result.includes('BROKEN_MANAGED'));
+  assert.ok(result.includes('进场先读 `.ai/memory/MEMORY.md`'));
+  assert.ok(result.includes('USER_CUSTOM_COMMAND=npm test'));
+});

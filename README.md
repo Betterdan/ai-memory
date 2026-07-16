@@ -44,6 +44,14 @@ An initialized project cannot be initialized again. A newer CLI first uses `upda
 
 ## Versions and compatibility
 
+### v0.5.0 — managed entry blocks
+
+- Wraps the framework-owned sections of generated `AGENTS.md` and `CLAUDE.md` in explicit `ai-memory:managed` markers. Future updates replace only that block and preserve project commands and custom rules outside it.
+- An unchanged v0.4.0 entry file can migrate to marked blocks automatically because its generated baseline hash proves it has not been edited. A modified unmarked v0.4.0 file requires one manual merge; after markers are established, later framework updates no longer conflict with user-section changes.
+- Missing, duplicated, or malformed markers fail conservatively instead of triggering a whole-file overwrite. Managed-block updates also re-check the current file hash immediately before writing.
+- `.claude/settings.json` remains a mixed JSON file and still requires review when both the framework and user changed it; Markdown markers are intentionally not applied to JSON.
+- Fixes npm's automatic `.gitignore` template renaming and safely replaces the unchanged v0.4.0 `.ai/runs/.npmignore`; a locally edited obsolete file still requires review.
+
 ### v0.4.0 — staged model routing and verified handoffs
 
 - Adds opt-in `inherit`, `balanced`, and `quality` profiles. New and upgraded projects default to `inherit`, so installing v0.4.0 does not silently increase model cost or change v0.3.0 workflow depth.
@@ -72,6 +80,15 @@ npx @betterdanlins/ai-memory@0.4.0 models configure --profile balanced
 ```
 
 After the update, the profile remains `inherit` until explicitly changed. Do not re-run `init` on an existing v0.3.0 project. If dry-run reports merge or review items, merge them with the generated v0.4.0 files as references, then run dry-run again.
+
+### Upgrade from v0.4.0 to v0.5.0
+
+```bash
+npx @betterdanlins/ai-memory@0.5.0 update --dry-run
+npx @betterdanlins/ai-memory@0.5.0 update --yes
+```
+
+If `AGENTS.md` or `CLAUDE.md` is still the unchanged v0.4.0 generated version, it migrates automatically. If either unmarked file was customized, dry-run reports `merge`; compare it with a fresh v0.5.0 reference, keep project-specific content in the user block, and retry. Once markers exist, edit only outside `<!-- ai-memory:managed:start/end -->`.
 
 ## What it generates
 
@@ -141,6 +158,7 @@ The generator is a small set of focused modules:
 - **render** — substitutes `{{variable}}` placeholders and throws on any undefined variable, so a broken template fails loudly instead of shipping `{{...}}`.
 - **scaffold** — validates safe destinations and symbolic links, resolves conflicts, and reads/renders the complete plan in memory before writing; it also validates `--import` and pulls `user-profile` / `feedback` from it (falling back to the template with an explicit report when an individual source file is missing).
 - **framework metadata** — a fresh init records framework/schema versions, ownership, and generated hashes; update uses them to distinguish safe updates from user changes. Metadata-free v0.1 projects are planned conservatively as legacy installations.
+- **managed entry blocks** — Markdown entry files update only their validated framework block. Unmarked or malformed customized files remain manual merges; JSON settings keep conservative whole-file review semantics.
 - **model routing** — optional profiles map existing workflow stages to premium, standard, economy, inherited, or no-model execution. Claude and Codex adapters use native custom-agent configuration; routing never creates extra S/M/L stages.
 - **workflow handoff** — a local manifest references formal requirements/design/plan files by path and SHA-256. Verification fails closed on stale inputs, unresolved decisions, changed routing, path escape, or symbolic links.
 
