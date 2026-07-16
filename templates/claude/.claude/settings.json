@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '[ai-memory] 会话收尾:请确认本次进展已按节点式协议写入 .ai/memory/session-log.md'"
+            "command": "echo '[ai-memory] 会话收尾:如有可验收工程节点、关键决策或跨会话风险,请写入 .ai/memory/session-log.md'"
           }
         ]
       }

@@ -6,3 +6,9 @@ coverage/
 /temp
 docs/superpowers/
 .superpowers/
+/docs/plan/
+/docs/memory/
+
+# Local agent instructions (repository-specific, not published)
+/AGENTS.md
+/CLAUDE.md

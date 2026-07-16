@@ -11,7 +11,7 @@
 
 ## 需求进度
 
-| 版本 | 需求 | 状态(draft/finalized/in-progress/done) | 备注 |
+| 版本 | 需求 | 状态(draft/finalized/designed/in-progress/done) | 备注 |
 |---|---|---|---|
 
 ## 已知遗留问题

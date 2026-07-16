@@ -11,8 +11,9 @@
 
 ## 目录
 
+- `ai-memory.json` — 框架版本、Schema、启用工具、文件所有权与生成基线哈希;供安全升级预检使用
 - `memory/` — 记忆层:MEMORY.md 索引、project-state 全景、session-log 流水、user-profile/feedback 用户级记忆、features/ 功能档案
-- `skills/` — 方法论层:requirements-flow、architecture、code-review、critic、memory-update
+- `skills/` — 方法论层:project-inception、requirements-flow、feature-design、delivery-readiness、architecture、code-review、critic、memory-update
 
 ## 与工具专属配置的关系
 

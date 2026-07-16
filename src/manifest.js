@@ -16,7 +16,26 @@ export async function buildManifest(templatesRoot, tools) {
       entries.push({ src: path.join(groupDir, ...rel.split('/')), dest: rel });
     }
   }
-  return entries.sort((a, b) => a.dest < b.dest ? -1 : a.dest > b.dest ? 1 : 0);
+  const sorted = entries.sort((a, b) => a.dest < b.dest ? -1 : a.dest > b.dest ? 1 : 0);
+  assertUniqueDestinations(sorted);
+  return sorted;
+}
+
+function assertUniqueDestinations(entries) {
+  const sourcesByDest = new Map();
+  for (const { src, dest } of entries) {
+    const sources = sourcesByDest.get(dest) ?? [];
+    sources.push(src);
+    sourcesByDest.set(dest, sources);
+  }
+
+  const conflicts = [...sourcesByDest]
+    .filter(([, sources]) => sources.length > 1)
+    .map(([dest, sources]) => `- ${dest}\n${sources.map(src => `  - ${src}`).join('\n')}`);
+
+  if (conflicts.length > 0) {
+    throw new Error(`Duplicate template destinations:\n${conflicts.join('\n')}`);
+  }
 }
 
 async function walk(dir, prefix) {
