@@ -6,11 +6,15 @@ import { mkdtemp, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { buildManifest } from '../src/manifest.js';
 import { scaffold } from '../src/scaffold.js';
+import { render } from '../src/render.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'templates');
-const VARS = { projectName: 'demo', techStack: 'PHP + Vue', date: '2026-07-06' };
+const VARS = {
+  projectName: 'demo', techStack: 'PHP + Vue', date: '2026-07-06', modelProfile: 'inherit', frameworkVersion: '0.4.0',
+};
 
 export const EXPECTED_COMMON = [
+  '.ai/config/model-routing.json',
   '.ai/memory/MEMORY.md',
   '.ai/memory/features/.gitkeep',
   '.ai/memory/feedback.md',
@@ -18,12 +22,14 @@ export const EXPECTED_COMMON = [
   '.ai/memory/session-log.md',
   '.ai/memory/user-profile.md',
   '.ai/README.md',
+  '.ai/runs/.gitignore',
   '.ai/skills/architecture.md',
   '.ai/skills/code-review.md',
   '.ai/skills/critic.md',
   '.ai/skills/delivery-readiness.md',
   '.ai/skills/feature-design.md',
   '.ai/skills/memory-update.md',
+  '.ai/skills/model-routing.md',
   '.ai/skills/project-inception.md',
   '.ai/skills/requirements-flow.md',
   'docs/architecture/data-model.md',
@@ -38,6 +44,12 @@ export const EXPECTED_COMMON = [
 ];
 export const EXPECTED_CLAUDE = [
   '.claude/agents/critic.md',
+  '.claude/agents/economy-test-worker.md',
+  '.claude/agents/premium-planner.md',
+  '.claude/agents/premium-reviewer.md',
+  '.claude/agents/premium-implementer.md',
+  '.claude/agents/standard-implementer.md',
+  '.claude/agents/standard-test-worker.md',
   '.claude/commands/critic.md',
   '.claude/commands/design-feature.md',
   '.claude/commands/delivery-readiness.md',
@@ -50,6 +62,7 @@ export const EXPECTED_CLAUDE = [
   '.claude/skills/delivery-readiness/SKILL.md',
   '.claude/skills/feature-design/SKILL.md',
   '.claude/skills/memory-update/SKILL.md',
+  '.claude/skills/model-routing/SKILL.md',
   '.claude/skills/project-inception/SKILL.md',
   '.claude/skills/requirements-flow/SKILL.md',
   'CLAUDE.md',
@@ -59,8 +72,15 @@ export const EXPECTED_CODEX = [
   '.agents/skills/delivery-readiness/SKILL.md',
   '.agents/skills/feature-design/SKILL.md',
   '.agents/skills/memory-update/SKILL.md',
+  '.agents/skills/model-routing/SKILL.md',
   '.agents/skills/project-inception/SKILL.md',
   '.agents/skills/requirements-flow/SKILL.md',
+  '.codex/agents/economy_test_worker.toml',
+  '.codex/agents/premium_planner.toml',
+  '.codex/agents/premium_reviewer.toml',
+  '.codex/agents/premium_implementer.toml',
+  '.codex/agents/standard_implementer.toml',
+  '.codex/agents/standard_test_worker.toml',
   'AGENTS.md',
 ];
 
@@ -128,4 +148,38 @@ test('交付、critic 与记忆更新按风险和工程节点控制成本', asyn
   assert.ok(critic.includes('M/L 级'));
   assert.ok(memory.includes('可独立验收'));
   assert.ok(memory.includes('不要因为写了一个测试'));
+});
+
+test('模型路由 common 单一源、双工具原生代理和默认继承保持一致', async () => {
+  const common = await readFile(path.join(ROOT, 'common', '.ai', 'skills', 'model-routing.md'), 'utf8');
+  const configTemplate = await readFile(path.join(ROOT, 'common', '.ai', 'config', 'model-routing.json'), 'utf8');
+  const config = JSON.parse(render(configTemplate, { modelProfile: 'inherit' }));
+  assert.equal(config.profile, 'inherit');
+  assert.ok(common.includes('风险流程'));
+  assert.ok(common.includes('不得用对话摘要替代正式文档'));
+  assert.ok(!common.includes('model: opus'));
+
+  for (const adapter of [
+    'claude/.claude/skills/model-routing/SKILL.md',
+    'codex/.agents/skills/model-routing/SKILL.md',
+  ]) {
+    const body = await readFile(path.join(ROOT, ...adapter.split('/')), 'utf8');
+    assert.ok(body.includes('.ai/skills/model-routing.md'));
+    assert.ok(body.length < 700);
+    const frontmatter = body.split('---')[1].trim().split('\n').map(line => line.split(':', 1)[0]);
+    assert.deepEqual(frontmatter, ['name', 'description']);
+  }
+
+  const claudePlanner = await readFile(path.join(ROOT, 'claude', '.claude', 'agents', 'premium-planner.md'), 'utf8');
+  const claudeTests = await readFile(path.join(ROOT, 'claude', '.claude', 'agents', 'economy-test-worker.md'), 'utf8');
+  const codexPlanner = await readFile(path.join(ROOT, 'codex', '.codex', 'agents', 'premium_planner.toml'), 'utf8');
+  const codexTests = await readFile(path.join(ROOT, 'codex', '.codex', 'agents', 'economy_test_worker.toml'), 'utf8');
+  assert.ok(claudePlanner.includes('model: opus'));
+  assert.ok(claudeTests.includes('model: haiku'));
+  assert.ok(codexPlanner.includes('model_reasoning_effort = "high"'));
+  assert.ok(codexTests.includes('model_reasoning_effort = "low"'));
+  await readFile(path.join(ROOT, 'claude', '.claude', 'agents', 'premium-implementer.md'), 'utf8');
+  await readFile(path.join(ROOT, 'claude', '.claude', 'agents', 'standard-test-worker.md'), 'utf8');
+  await readFile(path.join(ROOT, 'codex', '.codex', 'agents', 'premium_implementer.toml'), 'utf8');
+  await readFile(path.join(ROOT, 'codex', '.codex', 'agents', 'standard_test_worker.toml'), 'utf8');
 });

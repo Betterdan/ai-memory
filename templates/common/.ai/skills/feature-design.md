@@ -19,6 +19,8 @@
 7. M 级做一次精简自检；L 级按 critic 方法做独立或聚焦审查。
 8. 更新 `project-state.md` 为 `designed`，实现计划只引用本设计，不重新生成同义 spec。
 
+启用模型路由时，`feature-design` 与需要的 `write-plan` 分别创建 handoff；实现阶段必须重新 prepare，引用最终需求、设计和计划的当前哈希。不要把 brainstorming 对话作为实现输入。
+
 ## Superpowers 路由
 
 - S：跳过 brainstorming 和 writing-plans。

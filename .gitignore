@@ -12,3 +12,4 @@ docs/superpowers/
 # Local agent instructions (repository-specific, not published)
 /AGENTS.md
 /CLAUDE.md
+/.claude/settings.local.json

@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 const TEMPLATES = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'templates');
 
 test('文件所有权区分用户资产、框架文件和混合文件', () => {
+  assert.equal(ownershipFor('.ai/config/model-routing.json'), 'user');
   assert.equal(ownershipFor('.ai/memory/session-log.md'), 'user');
   assert.equal(ownershipFor('docs/requirements/v1.0.0/final/a.md'), 'user');
   assert.equal(ownershipFor('docs/architecture/data-model.md'), 'user');

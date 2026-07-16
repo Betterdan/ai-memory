@@ -28,8 +28,11 @@ test('init --yes 全量生成且渲染变量', async () => {
   assert.deepEqual(metadata.tools, ['claude', 'codex']);
   assert.equal(metadata.templateVars.projectName, 'demo');
   assert.equal(metadata.files['.ai/memory/project-state.md'].ownership, 'user');
+  assert.equal(metadata.files['.ai/config/model-routing.json'].ownership, 'user');
   assert.equal(metadata.files['.ai/skills/critic.md'].ownership, 'framework');
   assert.equal(metadata.files['AGENTS.md'].ownership, 'mixed');
+  const routing = JSON.parse(await readFile(path.join(dir, '.ai/config/model-routing.json'), 'utf8'));
+  assert.equal(routing.profile, 'inherit');
 });
 
 test('init --tools claude 不生成 Codex 侧', async () => {
@@ -176,4 +179,60 @@ test('未修改的 v0.1 legacy 项目可安全升级且保留记忆', async () =
   const metadata = JSON.parse(await readFile(path.join(dir, '.ai', 'ai-memory.json'), 'utf8'));
   assert.equal(metadata.schemaVersion, 1);
   assert.equal(metadata.templateVars.projectName, 'legacy-demo');
+});
+
+test('init 可显式启用 balanced 模型路由且拒绝未知 profile', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-routing-'));
+  const { stdout } = await run(process.execPath, [CLI, 'init', '--tools', '', '--model-profile', 'balanced', '--yes'], { cwd: dir });
+  assert.ok(stdout.includes('模型路由:balanced'));
+  const config = JSON.parse(await readFile(path.join(dir, '.ai/config/model-routing.json'), 'utf8'));
+  assert.equal(config.profile, 'balanced');
+
+  const invalid = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-routing-'));
+  await assert.rejects(
+    run(process.execPath, [CLI, 'init', '--tools', '', '--model-profile', 'fast', '--yes'], { cwd: invalid }),
+    /model profile 仅支持/
+  );
+});
+
+test('models configure/show 切换路由但不修改框架元数据', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-routing-'));
+  await run(process.execPath, [CLI, 'init', '--tools', '', '--yes'], { cwd: dir });
+  const metadataBefore = await readFile(path.join(dir, '.ai/ai-memory.json'), 'utf8');
+  const configured = await run(process.execPath, [CLI, 'models', 'configure', '--profile', 'balanced'], { cwd: dir });
+  assert.ok(configured.stdout.includes('inherit → balanced'));
+  const shown = await run(process.execPath, [CLI, 'models', 'show'], { cwd: dir });
+  assert.ok(shown.stdout.includes('implementation: standard'));
+  assert.ok(shown.stdout.includes('final-review: premium'));
+  assert.equal(await readFile(path.join(dir, '.ai/ai-memory.json'), 'utf8'), metadataBefore);
+});
+
+test('workflow prepare/verify 检测正式输入变化', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-workflow-'));
+  await run(process.execPath, [CLI, 'init', '--tools', '', '--model-profile', 'balanced', '--yes'], { cwd: dir });
+  await mkdir(path.join(dir, 'docs', 'design', 'v1.0.0'), { recursive: true });
+  const designPath = path.join(dir, 'docs', 'design', 'v1.0.0', 'login.md');
+  await writeFile(designPath, '# login\n');
+
+  const prepared = await run(process.execPath, [
+    CLI, 'workflow', 'prepare', '--feature', 'login', '--stage', 'implementation', '--risk', 'M',
+    '--input', 'docs/design/v1.0.0/login.md', '--acceptance', 'AC-01', '--scope', 'src/auth/**',
+  ], { cwd: dir });
+  assert.ok(prepared.stdout.includes('执行等级:standard'));
+  const verified = await run(process.execPath, [CLI, 'workflow', 'verify', '--feature', 'login', '--stage', 'implementation'], { cwd: dir });
+  assert.ok(verified.stdout.includes('交接校验通过'));
+
+  const result = {
+    stage: 'implementation', status: 'completed', changedFiles: [], acceptanceCoverage: { 'AC-01': 'covered' },
+    tests: ['npm test'], designDeviations: [], unresolvedRisks: [],
+  };
+  await writeFile(path.join(dir, 'result.json'), JSON.stringify(result));
+  const completed = await run(process.execPath, [CLI, 'workflow', 'complete', '--feature', 'login', '--result', 'result.json'], { cwd: dir });
+  assert.ok(completed.stdout.includes('implementation-result.json / completed'));
+
+  await writeFile(designPath, '# changed\n');
+  await assert.rejects(
+    run(process.execPath, [CLI, 'workflow', 'verify', '--feature', 'login'], { cwd: dir }),
+    /交接输入已变化/
+  );
 });

@@ -10,6 +10,7 @@
 - 交付前 → delivery-readiness skill,按风险验证契约、测试、迁移、回滚、性能与可观测性
 - 记忆更新 → 只在可验收工程节点、关键决策、状态变化或会话切换时写;手动 /update-memory
 - 反驳检查 → S 级精简自检;M/L 级或用户明确要求时用 /critic 独立审查
+- 模型路由 → 读取 `.ai/config/model-routing.json`;非 inherit 时按 model-routing skill 创建/验证 handoff，再调用匹配的 planner/implementer/test-worker/reviewer
 
 ## 与 superpowers 的编排(未安装则忽略本节)
 

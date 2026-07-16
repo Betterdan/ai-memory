@@ -23,6 +23,8 @@
 5. 按下方路由选择下一步，不在本流程中启动重复 brainstorming。
 6. 更新 `project-state.md` 为 `finalized`；在 `features/<需求名>.md` 记录外部契约与关键决策，并更新 MEMORY 索引。
 
+若 `.ai/config/model-routing.json` 的 profile 不是 `inherit`，定稿前按 `.ai/skills/model-routing.md` 为 `requirement-finalize` 准备并校验 handoff，再使用对应等级执行者。模型路由不得改变下方 S/M/L 流程深度。
+
 ## 风险路由
 
 | 等级 | 判断 | 下一步 |

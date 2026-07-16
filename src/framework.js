@@ -12,6 +12,7 @@ export const CURRENT_SCHEMA_VERSION = 1;
 export const METADATA_DEST = '.ai/ai-memory.json';
 
 const USER_PREFIXES = [
+  '.ai/config/',
   '.ai/memory/',
   'docs/architecture/',
   'docs/requirements/v',
@@ -88,7 +89,8 @@ export async function planFrameworkUpdate({ targetDir, templatesRoot, frameworkV
   if (installation.kind === 'none') throw new Error('当前目录不是 ai-memory 项目,请先运行 init');
 
   const tools = installation.kind === 'metadata' ? installation.metadata.tools : installation.tools;
-  const vars = installation.kind === 'metadata' ? installation.metadata.templateVars : installation.templateVars;
+  const rawVars = installation.kind === 'metadata' ? installation.metadata.templateVars : installation.templateVars;
+  const vars = { modelProfile: 'inherit', ...rawVars, frameworkVersion };
   if (installation.kind === 'metadata' && compareVersions(installation.metadata.frameworkVersion, frameworkVersion) > 0) {
     throw new Error(`项目框架版本 ${installation.metadata.frameworkVersion} 高于当前 CLI ${frameworkVersion},请使用更新版本的 CLI`);
   }
@@ -138,6 +140,7 @@ export async function planFrameworkUpdate({ targetDir, templatesRoot, frameworkV
     frameworkVersion,
     schemaVersion: CURRENT_SCHEMA_VERSION,
     tools,
+    templateVars: vars,
     migrations,
     actions,
   };
@@ -153,9 +156,7 @@ export async function applyFrameworkUpdate({ targetDir, templatesRoot, plan }) {
     throw new Error(`存在不可自动执行的 Schema 迁移: ${manualMigrations.map(item => item.id).join(', ')}`);
   }
 
-  const vars = plan.installation.kind === 'metadata'
-    ? plan.installation.metadata.templateVars
-    : plan.installation.templateVars;
+  const vars = plan.templateVars;
   const manifest = await buildManifest(templatesRoot, plan.tools);
   const sources = new Map(manifest.map(entry => [entry.dest, entry.src]));
   const candidates = [];
