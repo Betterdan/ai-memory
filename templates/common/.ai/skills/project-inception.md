@@ -12,7 +12,7 @@
 
 ## 工作流
 
-1. 读取项目目标、现有代码/文档和 `.ai/memory/project-state.md`。
+1. 读取项目目标、现有代码/文档、`.ai/memory/project-state.md` 与 `.ai/skills/architecture.md` 的语言无关边界原则。
 2. 判断是 0→1、新增基线还是重大重构；不适用则停止并转入需求或功能设计流程。
 3. 只询问会改变架构方向的阻塞信息；非阻塞信息采用保守假设并明确标记。
 4. 按 `docs/architecture/` 的四份模板建立或增量更新工程基线：

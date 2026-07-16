@@ -10,7 +10,7 @@ import { render } from '../src/render.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'templates');
 const VARS = {
-  projectName: 'demo', techStack: 'PHP + Vue', date: '2026-07-06', modelProfile: 'inherit', frameworkVersion: '0.4.0',
+  projectName: 'demo', techStack: 'PHP + Vue', date: '2026-07-06', modelProfile: 'inherit', frameworkVersion: '0.6.0',
 };
 
 export const EXPECTED_COMMON = [
@@ -148,6 +148,32 @@ test('交付、critic 与记忆更新按风险和工程节点控制成本', asyn
   assert.ok(critic.includes('M/L 级'));
   assert.ok(memory.includes('可独立验收'));
   assert.ok(memory.includes('不要因为写了一个测试'));
+  assert.ok(memory.includes('user-profile.md'));
+  assert.ok(memory.includes('feedback.md'));
+  assert.ok(memory.includes('不得根据对话风格'));
+  assert.ok(memory.includes('仓库可见性'));
+  assert.ok(memory.includes('凭据永不写入'));
+});
+
+test('全部核心记忆具备进场加载与写入闭环,架构方法论有按需入口', async () => {
+  const protocol = await readFile(path.join(ROOT, 'common', '.ai', 'README.md'), 'utf8');
+  const index = await readFile(path.join(ROOT, 'common', '.ai', 'memory', 'MEMORY.md'), 'utf8');
+  const profile = await readFile(path.join(ROOT, 'common', '.ai', 'memory', 'user-profile.md'), 'utf8');
+  const feedback = await readFile(path.join(ROOT, 'common', '.ai', 'memory', 'feedback.md'), 'utf8');
+  for (const file of ['user-profile.md', 'feedback.md', 'project-state.md', 'session-log.md']) {
+    assert.ok(protocol.includes(file), `进场协议必须加载 ${file}`);
+    assert.ok(index.includes(file), `记忆索引必须登记 ${file}`);
+  }
+  assert.ok(protocol.includes('禁止一次性读取整个'));
+  assert.ok(profile.includes('只记录用户明确表达或确认'));
+  assert.ok(profile.includes('必须先确认的操作'));
+  assert.ok(feedback.includes('可重复执行的规则'));
+  assert.ok(feedback.includes('以用户最新明确反馈为准'));
+
+  const inception = await readFile(path.join(ROOT, 'common', '.ai', 'skills', 'project-inception.md'), 'utf8');
+  const design = await readFile(path.join(ROOT, 'common', '.ai', 'skills', 'feature-design.md'), 'utf8');
+  assert.ok(inception.includes('.ai/skills/architecture.md'));
+  assert.ok(design.includes('.ai/skills/architecture.md'));
 });
 
 test('模型路由 common 单一源、双工具原生代理和默认继承保持一致', async () => {
@@ -165,10 +191,17 @@ test('模型路由 common 单一源、双工具原生代理和默认继承保持
   ]) {
     const body = await readFile(path.join(ROOT, ...adapter.split('/')), 'utf8');
     assert.ok(body.includes('.ai/skills/model-routing.md'));
-    assert.ok(body.length < 700);
+    assert.ok(body.length < 1000);
     const frontmatter = body.split('---')[1].trim().split('\n').map(line => line.split(':', 1)[0]);
     assert.deepEqual(frontmatter, ['name', 'description']);
   }
+
+  const claudeRouting = await readFile(path.join(ROOT, 'claude', '.claude', 'skills', 'model-routing', 'SKILL.md'), 'utf8');
+  const codexRouting = await readFile(path.join(ROOT, 'codex', '.agents', 'skills', 'model-routing', 'SKILL.md'), 'utf8');
+  assert.ok(claudeRouting.includes('premium-planner'));
+  assert.ok(claudeRouting.includes('economy-test-worker'));
+  assert.ok(codexRouting.includes('premium_planner'));
+  assert.ok(codexRouting.includes('economy_test_worker'));
 
   const claudePlanner = await readFile(path.join(ROOT, 'claude', '.claude', 'agents', 'premium-planner.md'), 'utf8');
   const claudeTests = await readFile(path.join(ROOT, 'claude', '.claude', 'agents', 'economy-test-worker.md'), 'utf8');
@@ -191,5 +224,6 @@ test('AGENTS.md 与 CLAUDE.md 使用唯一受管区块并保留用户区块', as
     assert.equal(body.match(/<!-- ai-memory:managed:end -->/g)?.length, 1);
     assert.equal(body.match(/<!-- ai-memory:user:start -->/g)?.length, 1);
     assert.equal(body.match(/<!-- ai-memory:user:end -->/g)?.length, 1);
+    assert.ok(body.includes('进场先读 `.ai/README.md`'));
   }
 });

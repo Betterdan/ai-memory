@@ -3,7 +3,7 @@
 <!-- ai-memory:managed:start -->
 ## AI 协作框架(ai-memory)
 
-进场先读 `.ai/memory/MEMORY.md`,随后遵循 `.ai/README.md` 的进场协议。
+进场先读 `.ai/README.md`,严格按其中的核心记忆与任务路由加载协议执行。
 本 managed 区块由 ai-memory 更新;项目命令和自定义规则只写到下方 user 区块。
 
 - 0→1 项目/首次架构基线/重大重构 → project-inception skill,产物在 `docs/architecture/`;普通功能不要重复触发

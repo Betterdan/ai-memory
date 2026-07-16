@@ -119,7 +119,7 @@ program
     if (r.imported.length) for (const d of r.imported) console.log(`  已导入 ${d}`);
     if (r.fallback.length) for (const d of r.fallback) console.log(`  导入源缺失,使用模板 ${d}`);
     if (r.skipped.length) for (const d of r.skipped) console.log(`  跳过 ${d}`);
-    console.log('下一步:打开项目让 agent 读 .ai/memory/MEMORY.md;把项目命令补进 CLAUDE.md/AGENTS.md。');
+    console.log('下一步:打开项目让 agent 读 .ai/README.md;把项目命令补进 CLAUDE.md/AGENTS.md 的 user 区块。');
   });
 
 const models = program.command('models').description('查看或配置阶段模型路由');

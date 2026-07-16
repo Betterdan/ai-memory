@@ -44,6 +44,14 @@ An initialized project cannot be initialized again. A newer CLI first uses `upda
 
 ## Versions and compatibility
 
+### v0.6.0 — actionable memory loading
+
+- Turns `user-profile.md` and `feedback.md` from passive import files into core session context. Every session loads the profile, durable collaboration rules, project state, and the latest session entry in a fixed order.
+- Adds an explicit memory write router: confirmed cross-project preferences go to `user-profile.md`, reusable user corrections go to `feedback.md`, project facts stay in project memory, and one-off instructions are not persisted.
+- Forbids inferred personal profiling and credential storage. Sensitive information is omitted by default and requires both an explicit request and confirmation of repository visibility; newer feedback replaces conflicting older rules.
+- Adds task-specific loading routes so agents do not read the whole knowledge base. The architecture methodology is now explicitly loaded only by project inception and feature design.
+- Connects Claude and Codex model-routing skills to their concrete native agent names, removing the implicit tier-to-executor gap.
+
 ### v0.5.0 — managed entry blocks
 
 - Wraps the framework-owned sections of generated `AGENTS.md` and `CLAUDE.md` in explicit `ai-memory:managed` markers. Future updates replace only that block and preserve project commands and custom rules outside it.
@@ -90,6 +98,15 @@ npx @betterdanlins/ai-memory@0.5.0 update --yes
 
 If `AGENTS.md` or `CLAUDE.md` is still the unchanged v0.4.0 generated version, it migrates automatically. If either unmarked file was customized, dry-run reports `merge`; compare it with a fresh v0.5.0 reference, keep project-specific content in the user block, and retry. Once markers exist, edit only outside `<!-- ai-memory:managed:start/end -->`.
 
+### Upgrade from v0.5.0 to v0.6.0
+
+```bash
+npx @betterdanlins/ai-memory@0.6.0 update --dry-run
+npx @betterdanlins/ai-memory@0.6.0 update --yes
+```
+
+The managed sections of `AGENTS.md` / `CLAUDE.md` and unchanged framework files update automatically. Existing `user-profile.md`, `feedback.md`, project state, and feature memory remain user-owned and are never overwritten. The new entry and memory-update protocols start using that existing content immediately; richer profile/feedback starter structures are used only for fresh or still-missing files.
+
 ## What it generates
 
 ```
@@ -99,7 +116,7 @@ If `AGENTS.md` or `CLAUDE.md` is still the unchanged v0.4.0 generated version, i
 ├── config/
 │   └── model-routing.json    # inherit/balanced/quality stage routing; user-owned
 ├── memory/
-│   ├── MEMORY.md             # index — agents read this first
+│   ├── MEMORY.md             # core/on-demand memory loading index
 │   ├── project-state.md      # stack, current version, requirement progress
 │   ├── session-log.md        # rolling log of progress & next steps
 │   ├── user-profile.md       # background, preferences, communication style
@@ -165,6 +182,7 @@ The generator is a small set of focused modules:
 ## Design principles
 
 - **Single source** — content lives only in `.ai/`; `.claude/` and `.agents/` are trigger wrappers.
+- **Actionable scoped memory** — every session loads a small core set; durable user preferences, reusable feedback, project facts, and feature decisions have separate write destinations, while task artifacts remain on-demand.
 - **Engineering-node memory** — write session-log entries for independently verifiable features/phases, durable decisions, status changes, or tool handoffs, avoiding noise from tiny implementation steps.
 - **Dual requirement directories** — human draft (`draft/`) → AI final (`final/`) behind a mandatory critic gate.
 - **Project engineering baseline** — 0-to-1 projects establish language-agnostic system, data, quality-attribute, and deployment baselines once; ordinary features record only deltas.

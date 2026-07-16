@@ -10,7 +10,7 @@
 
 ## 流程
 
-1. 读取 `final/<需求名>.md` 的实现交接，以及相关 `docs/architecture/`、源码和 feature 记忆。
+1. 读取 `final/<需求名>.md` 的实现交接、`.ai/skills/architecture.md`，以及相关 `docs/architecture/`、源码和 feature 记忆。
 2. 若需求存在矛盾或阻塞开放问题，退回 requirements-flow；不要用实现假设偷偷补需求。
 3. 在 `docs/design/vX.Y.Z/<需求名>.md` 按模板形成设计，只填写适用章节，不涉及也要简述原因。
 4. 为真实边界定义技术接口契约；不要为所有私有函数写文档。

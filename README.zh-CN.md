@@ -44,6 +44,14 @@ npx @betterdanlins/ai-memory models configure --profile balanced
 
 ## 版本与兼容性
 
+### v0.6.0 —— 可执行的记忆加载闭环
+
+- 将 `user-profile.md` 和 `feedback.md` 从被动导入文件接入核心会话上下文。每次会话按固定顺序加载用户画像、长期协作规则、项目状态和最新 session 条目。
+- 增加明确的记忆写入路由：已确认的跨项目偏好进入 `user-profile.md`，可复用的用户纠正进入 `feedback.md`，项目事实留在项目记忆，一次性要求不落盘。
+- 禁止推断个人画像和保存凭据。敏感信息默认不写，只有用户明确要求并确认仓库可见性后才能记录；新反馈与旧规则冲突时替换旧规则。
+- 增加按任务加载路由，避免 Agent 一次性读取整个知识库；架构方法论只在项目启动和功能设计时明确加载。
+- Claude 与 Codex 的模型路由 skill 现在显式映射实际原生代理名称，补齐等级到执行者之间的隐式断点。
+
 ### v0.5.0 —— 入口文件受管区块
 
 - 为生成的 `AGENTS.md` 和 `CLAUDE.md` 框架区域增加明确的 `ai-memory:managed` 标记。后续升级只替换该区块,区块外的项目命令和自定义规则保持不变。
@@ -90,6 +98,15 @@ npx @betterdanlins/ai-memory@0.5.0 update --yes
 
 如果 `AGENTS.md` 或 `CLAUDE.md` 仍是未修改的 v0.4.0 生成版本,会自动迁移。若无标记入口已被定制,dry-run 会报告 `merge`;应对照全新 v0.5.0 参考文件,把项目内容放进 user 区块后重试。标记建立后,只在 `<!-- ai-memory:managed:start/end -->` 之外编辑。
 
+### 从 v0.5.0 升级到 v0.6.0
+
+```bash
+npx @betterdanlins/ai-memory@0.6.0 update --dry-run
+npx @betterdanlins/ai-memory@0.6.0 update --yes
+```
+
+`AGENTS.md` / `CLAUDE.md` 的受管区块和未修改的框架文件会自动更新。已有 `user-profile.md`、`feedback.md`、项目状态和 feature 记忆继续属于用户资产，绝不覆盖；新的进场和 memory-update 协议会立即使用已有内容。更完整的画像/反馈初始结构只用于全新项目或仍缺失的文件。
+
 ## 生成什么
 
 ```
@@ -99,7 +116,7 @@ npx @betterdanlins/ai-memory@0.5.0 update --yes
 ├── config/
 │   └── model-routing.json    # inherit/balanced/quality 阶段路由;属于用户配置
 ├── memory/
-│   ├── MEMORY.md             # 索引 —— agent 进场先读
+│   ├── MEMORY.md             # 核心/按需记忆加载索引
 │   ├── project-state.md      # 技术栈、当前版本、需求进度
 │   ├── session-log.md        # 进展与下一步的流水日志
 │   ├── user-profile.md       # 背景、偏好、沟通方式
@@ -165,6 +182,7 @@ AGENTS.md + .agents/ + .codex/# Codex:skills 与分层自定义 agents
 ## 设计原则
 
 - **单一源** —— 正文只在 `.ai/`;`.claude/`、`.agents/` 只是触发包装。
+- **可执行的分域记忆** —— 每次会话只加载小型核心集合；长期用户偏好、可复用反馈、项目事实和功能决策分别写入不同位置，任务产物继续按需加载。
 - **工程节点记忆** —— 只在可独立验收的功能/阶段、关键决策、状态变化或工具切换时写 session-log,避免细碎步骤制造噪声。
 - **需求双目录** —— 人工粗稿(`draft/`)→ AI 定稿(`final/`),中间隔一道强制 critic 门。
 - **项目工程基线** —— 0→1 项目先建立语言无关的系统、数据、质量属性和部署基线;普通功能只记录增量,不重复设计全局架构。

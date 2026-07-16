@@ -16,7 +16,8 @@ const PACKAGE_VERSION = JSON.parse(
 
 test('init --yes 全量生成且渲染变量', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-'));
-  await run(process.execPath, [CLI, 'init', '--name', 'demo', '--stack', 'Go', '--tools', 'claude,codex', '--yes'], { cwd: dir });
+  const { stdout } = await run(process.execPath, [CLI, 'init', '--name', 'demo', '--stack', 'Go', '--tools', 'claude,codex', '--yes'], { cwd: dir });
+  assert.ok(stdout.includes('agent 读 .ai/README.md'));
   const state = await readFile(path.join(dir, '.ai/memory/project-state.md'), 'utf8');
   assert.ok(state.includes('- 项目:demo'));
   assert.ok(state.includes('- 技术栈:Go'));
@@ -243,7 +244,7 @@ test('update 只替换 AGENTS.md 受管区块并保留用户内容', async () =>
   const agentsPath = path.join(dir, 'AGENTS.md');
   const original = await readFile(agentsPath, 'utf8');
   const customized = original
-    .replace('进场先读 `.ai/memory/MEMORY.md`', 'BROKEN_MANAGED')
+    .replace('进场先读 `.ai/README.md`', 'BROKEN_MANAGED')
     .replace('<!-- 在此补充启动/测试/构建命令 -->', 'USER_CUSTOM_COMMAND=npm test');
   await writeFile(agentsPath, customized);
 
@@ -254,6 +255,6 @@ test('update 只替换 AGENTS.md 受管区块并保留用户内容', async () =>
 
   const result = await readFile(agentsPath, 'utf8');
   assert.ok(!result.includes('BROKEN_MANAGED'));
-  assert.ok(result.includes('进场先读 `.ai/memory/MEMORY.md`'));
+  assert.ok(result.includes('进场先读 `.ai/README.md`'));
   assert.ok(result.includes('USER_CUSTOM_COMMAND=npm test'));
 });
