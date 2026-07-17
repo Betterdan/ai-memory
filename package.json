@@ -26,6 +26,6 @@
   "publishConfig": {"access": "public"},
   "dependencies": {
     "@inquirer/prompts": "^8.5.2",
-    "commander": "^13.1.0"
+    "commander": "^15.0.0"
   }
 }
