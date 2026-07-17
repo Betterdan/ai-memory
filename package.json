@@ -15,7 +15,7 @@
     "node": ">=20.17.0"
   },
   "scripts": {
-    "test": "node --test test/*.test.js",
+    "test": "node scripts/run-tests.mjs",
     "test:package": "node scripts/verify-package.mjs",
     "verify": "npm test && npm run test:package"
   },
