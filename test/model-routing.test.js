@@ -1,12 +1,15 @@
-import { test } from 'node:test';
+import { afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import os from 'node:os';
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import {
   createModelRoutingConfig, MODEL_ROUTING_DEST, resolveModelRouting,
   validateModelRoutingConfig, writeModelRoutingConfig,
 } from '../src/model-routing.js';
+import { createTempDirs } from './temp-dirs.js';
+
+const tempDirs = createTempDirs();
+afterEach(() => tempDirs.cleanup());
 
 test('inherit 保持旧行为且测试执行不调用模型', () => {
   const routing = resolveModelRouting(createModelRoutingConfig());
@@ -30,7 +33,7 @@ test('配置拒绝未知 profile、stage 和 tier', () => {
 });
 
 test('模型配置以稳定 JSON 写入项目', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-routing-'));
+  const dir = await tempDirs.make('aim-routing-');
   await writeModelRoutingConfig(dir, createModelRoutingConfig('quality'));
   const body = await readFile(path.join(dir, ...MODEL_ROUTING_DEST.split('/')), 'utf8');
   assert.equal(JSON.parse(body).profile, 'quality');

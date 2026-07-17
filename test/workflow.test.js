@@ -1,13 +1,17 @@
-import { test } from 'node:test';
+import { afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import os from 'node:os';
 import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { createModelRoutingConfig, writeModelRoutingConfig } from '../src/model-routing.js';
 import { prepareHandoff, recordStageResult, verifyHandoff } from '../src/workflow.js';
+import { createTempDirs } from './temp-dirs.js';
+
+const tempDirs = createTempDirs();
+afterEach(() => tempDirs.cleanup());
 
 async function project(profile = 'balanced') {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-workflow-'));
+  const dir = await tempDirs.make('aim-workflow-');
   await mkdir(path.join(dir, 'docs', 'design'), { recursive: true });
   await writeFile(path.join(dir, 'docs', 'design', 'feature.md'), 'DESIGN\n');
   await writeModelRoutingConfig(dir, createModelRoutingConfig(profile));

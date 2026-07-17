@@ -1,15 +1,17 @@
-import { test } from 'node:test';
+import { afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import os from 'node:os';
-import { access, mkdtemp, readFile, writeFile, mkdir, rm, symlink } from 'node:fs/promises';
+import { access, readFile, writeFile, mkdir, rm, symlink } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { scaffold } from '../src/scaffold.js';
+import { createTempDirs } from './temp-dirs.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'templates');
 const VARS = { projectName: 'demo', techStack: 'php', date: '2026-07-06' };
 
-async function tmp() { return mkdtemp(path.join(os.tmpdir(), 'aim-')); }
+const tempDirs = createTempDirs();
+afterEach(() => tempDirs.cleanup());
+async function tmp() { return tempDirs.make('aim-'); }
 
 test('全新目录:全部写入并渲染变量', async () => {
   const dir = await tmp();

@@ -4,6 +4,8 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
+[![CI](https://github.com/Betterdan/ai-memory/actions/workflows/ci.yml/badge.svg)](https://github.com/Betterdan/ai-memory/actions/workflows/ci.yml)
+
 ## Why
 
 AI coding agents forget everything between sessions, and every tool (Claude Code, Codex, …) wants its own config format. `ai-memory` fixes both:
@@ -43,6 +45,15 @@ Before writing, the CLI checks for duplicate template destinations, path travers
 An initialized project cannot be initialized again. A newer CLI first uses `update --dry-run` to identify versions and user modifications. `update --yes` applies only additions and baseline-matching safe updates, aborting before any write when merge or review items exist.
 
 ## Versions and compatibility
+
+### v0.7.0 — release engineering
+
+- Adds a GitHub Actions matrix for Windows/Linux and both the minimum supported Node.js `20.17.0` and the current LTS line.
+- Pins third-party Actions to immutable commit SHAs, disables persisted checkout credentials, uses read-only workflow permissions, and enables weekly npm/Actions Dependabot updates.
+- Adds a real package gate: build the npm tarball, reject local-only files, install it into an isolated directory, then execute packaged `init` and `update --dry-run`.
+- Replaces the placeholder arithmetic smoke test with a real CLI startup and command-discovery test.
+- Centralizes temporary-directory tracking so CLI, scaffold, workflow, routing, and template tests clean up after both passing and failing cases.
+- Adds `npm run verify` as the single local/CI release check.
 
 ### v0.6.0 — actionable memory loading
 
@@ -106,6 +117,15 @@ npx @betterdanlins/ai-memory@0.6.0 update --yes
 ```
 
 The managed sections of `AGENTS.md` / `CLAUDE.md` and unchanged framework files update automatically. Existing `user-profile.md`, `feedback.md`, project state, and feature memory remain user-owned and are never overwritten. The new entry and memory-update protocols start using that existing content immediately; richer profile/feedback starter structures are used only for fresh or still-missing files.
+
+### Upgrade from v0.6.0 to v0.7.0
+
+```bash
+npx @betterdanlins/ai-memory@0.7.0 update --dry-run
+npx @betterdanlins/ai-memory@0.7.0 update --yes
+```
+
+v0.7.0 changes release validation rather than project-owned workflow data. Normal upgrades only refresh unchanged framework metadata/templates; user memory, requirements, designs, model profile, and entry user blocks remain unchanged.
 
 ## What it generates
 
@@ -178,6 +198,7 @@ The generator is a small set of focused modules:
 - **managed entry blocks** — Markdown entry files update only their validated framework block. Unmarked or malformed customized files remain manual merges; JSON settings keep conservative whole-file review semantics.
 - **model routing** — optional profiles map existing workflow stages to premium, standard, economy, inherited, or no-model execution. Claude and Codex adapters use native custom-agent configuration; routing never creates extra S/M/L stages.
 - **workflow handoff** — a local manifest references formal requirements/design/plan files by path and SHA-256. Verification fails closed on stale inputs, unresolved decisions, changed routing, path escape, or symbolic links.
+- **package verification** — CI and local verification install the generated tarball itself, exercise its packaged CLI, and assert that local collaboration files are excluded.
 
 ## Design principles
 
@@ -198,7 +219,9 @@ The generator is a small set of focused modules:
 ## Development
 
 ```bash
-npm test        # node --test test/*.test.js
+npm test              # unit and CLI/template integration tests
+npm run test:package  # pack, isolated install, packaged init/update smoke
+npm run verify        # complete local/CI release gate
 ```
 
 ## License

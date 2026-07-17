@@ -4,6 +4,8 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
+[![CI](https://github.com/Betterdan/ai-memory/actions/workflows/ci.yml/badge.svg)](https://github.com/Betterdan/ai-memory/actions/workflows/ci.yml)
+
 ## 为什么
 
 AI 编码 agent 在会话之间会丢失全部上下文,而每个工具(Claude Code、Codex……)又各有各的配置格式。`ai-memory` 同时解决这两个问题:
@@ -43,6 +45,15 @@ npx @betterdanlins/ai-memory models configure --profile balanced
 已初始化项目不能重新运行 `init`;新版 CLI 先通过 `update --dry-run` 识别版本和用户修改。`update --yes` 只应用新增和基线哈希匹配的安全更新,存在合并/审查项时在写入前整体拒绝。
 
 ## 版本与兼容性
+
+### v0.7.0 —— 发布工程化
+
+- 新增 GitHub Actions 矩阵，覆盖 Windows/Linux、最低支持 Node.js `20.17.0` 和当前 LTS。
+- 第三方 Actions 固定到不可变提交 SHA，关闭 checkout 凭据持久化，工作流只授予只读权限，并启用 npm/Actions 每周 Dependabot 更新。
+- 新增真实发布包门禁：生成 npm tarball、拒绝本地专用文件、安装到隔离目录，再执行包内 `init` 与 `update --dry-run`。
+- 用真实 CLI 启动和核心命令发现测试替换无意义的算术 smoke。
+- 统一跟踪测试临时目录，CLI、scaffold、workflow、模型路由和模板测试在成功或失败后都会清理。
+- 新增 `npm run verify`，作为本地与 CI 共用的完整发布检查入口。
 
 ### v0.6.0 —— 可执行的记忆加载闭环
 
@@ -106,6 +117,15 @@ npx @betterdanlins/ai-memory@0.6.0 update --yes
 ```
 
 `AGENTS.md` / `CLAUDE.md` 的受管区块和未修改的框架文件会自动更新。已有 `user-profile.md`、`feedback.md`、项目状态和 feature 记忆继续属于用户资产，绝不覆盖；新的进场和 memory-update 协议会立即使用已有内容。更完整的画像/反馈初始结构只用于全新项目或仍缺失的文件。
+
+### 从 v0.6.0 升级到 v0.7.0
+
+```bash
+npx @betterdanlins/ai-memory@0.7.0 update --dry-run
+npx @betterdanlins/ai-memory@0.7.0 update --yes
+```
+
+v0.7.0 改变的是发布验证，不修改项目所有的工作流数据。正常升级只刷新未修改的框架元数据/模板；用户记忆、需求、设计、模型 profile 和入口 user 区块保持不变。
 
 ## 生成什么
 
@@ -178,6 +198,7 @@ AGENTS.md + .agents/ + .codex/# Codex:skills 与分层自定义 agents
 - **managed entry blocks** —— Markdown 入口只更新通过校验的框架区块;无标记或标记损坏的定制文件仍人工合并,JSON settings 继续采用保守整文件审查。
 - **model routing** —— 可选 profile 把现有阶段映射为 premium、standard、economy、inherit 或无模型执行;Claude/Codex 使用原生自定义 agent 配置,路由不会增加 S/M/L 阶段。
 - **workflow handoff** —— 本地清单只用路径和 SHA-256 引用正式需求/设计/计划;输入过期、未决问题、路由变化、路径越界或符号链接都会关闭式失败。
+- **发布包验证** —— CI 和本地验证直接安装生成的 tarball，运行包内 CLI，并断言本地协作文件不会进入发布物。
 
 ## 设计原则
 
@@ -198,7 +219,9 @@ AGENTS.md + .agents/ + .codex/# Codex:skills 与分层自定义 agents
 ## 开发
 
 ```bash
-npm test        # node --test test/*.test.js
+npm test              # 单元及 CLI/模板集成测试
+npm run test:package  # 打包、隔离安装、包内 init/update smoke
+npm run verify        # 本地与 CI 完整发布门禁
 ```
 
 ## 许可证

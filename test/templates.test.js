@@ -1,16 +1,18 @@
-import { test } from 'node:test';
+import { afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import os from 'node:os';
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { buildManifest } from '../src/manifest.js';
 import { scaffold } from '../src/scaffold.js';
 import { render } from '../src/render.js';
+import { createTempDirs } from './temp-dirs.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'templates');
+const tempDirs = createTempDirs();
+afterEach(() => tempDirs.cleanup());
 const VARS = {
-  projectName: 'demo', techStack: 'PHP + Vue', date: '2026-07-06', modelProfile: 'inherit', frameworkVersion: '0.6.0',
+  projectName: 'demo', techStack: 'PHP + Vue', date: '2026-07-06', modelProfile: 'inherit', frameworkVersion: '0.7.0',
 };
 
 export const EXPECTED_COMMON = [
@@ -93,7 +95,7 @@ test('真实模板清单与期望一致', async () => {
 });
 
 test('scaffold 真实模板:渲染后无残留 {{ 且变量已替换', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-real-'));
+  const dir = await tempDirs.make('aim-real-');
   const r = await scaffold({ templatesRoot: ROOT, targetDir: dir, vars: VARS, tools: ['claude', 'codex'], onConflict: () => 'skip' });
   assert.equal(r.skipped.length, 0);
   for (const dest of r.written) {
@@ -106,7 +108,7 @@ test('scaffold 真实模板:渲染后无残留 {{ 且变量已替换', async () 
 });
 
 test('新增工程 skills 适配层保持薄包装且架构基线可渲染', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-inception-'));
+  const dir = await tempDirs.make('aim-inception-');
   await scaffold({ templatesRoot: ROOT, targetDir: dir, vars: VARS, tools: ['claude', 'codex'], onConflict: () => 'skip' });
 
   const common = await readFile(path.join(dir, '.ai/skills/project-inception.md'), 'utf8');

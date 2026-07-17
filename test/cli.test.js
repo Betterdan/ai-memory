@@ -1,11 +1,11 @@
-import { test } from 'node:test';
+import { afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import os from 'node:os';
-import { mkdtemp, readFile, writeFile, access, mkdir, cp } from 'node:fs/promises';
+import { readFile, writeFile, access, mkdir, cp } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import { createTempDirs } from './temp-dirs.js';
 
 const run = promisify(execFile);
 const CLI = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'cli.js');
@@ -13,9 +13,12 @@ const LEGACY_FIXTURE = path.join(path.dirname(fileURLToPath(import.meta.url)), '
 const PACKAGE_VERSION = JSON.parse(
   await readFile(path.join(path.dirname(CLI), '..', 'package.json'), 'utf8')
 ).version;
+const tempDirs = createTempDirs();
+const temp = prefix => tempDirs.make(prefix);
+afterEach(() => tempDirs.cleanup());
 
 test('init --yes 全量生成且渲染变量', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-'));
+  const dir = await temp('aim-cli-');
   const { stdout } = await run(process.execPath, [CLI, 'init', '--name', 'demo', '--stack', 'Go', '--tools', 'claude,codex', '--yes'], { cwd: dir });
   assert.ok(stdout.includes('agent 读 .ai/README.md'));
   const state = await readFile(path.join(dir, '.ai/memory/project-state.md'), 'utf8');
@@ -37,14 +40,14 @@ test('init --yes 全量生成且渲染变量', async () => {
 });
 
 test('init --tools claude 不生成 Codex 侧', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-'));
+  const dir = await temp('aim-cli-');
   await run(process.execPath, [CLI, 'init', '--name', 'demo', '--stack', 'Go', '--tools', 'claude', '--yes'], { cwd: dir });
   await access(path.join(dir, 'CLAUDE.md'));
   await assert.rejects(access(path.join(dir, 'AGENTS.md')));
 });
 
 test('init --yes 冲突时跳过既有文件', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-'));
+  const dir = await temp('aim-cli-');
   await writeFile(path.join(dir, 'CLAUDE.md'), 'MINE\n');
   const { stdout } = await run(process.execPath, [CLI, 'init', '--name', 'demo', '--stack', 'Go', '--tools', 'claude', '--yes'], { cwd: dir });
   assert.equal(await readFile(path.join(dir, 'CLAUDE.md'), 'utf8'), 'MINE\n');
@@ -54,7 +57,7 @@ test('init --yes 冲突时跳过既有文件', async () => {
 });
 
 test('非法 --tools 值报错退出(验证在交互前)', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-'));
+  const dir = await temp('aim-cli-');
   await assert.rejects(
     run(process.execPath, [CLI, 'init', '--tools', 'cursor', '--yes'], { cwd: dir }),
     /tools 仅支持 claude、codex/
@@ -62,7 +65,7 @@ test('非法 --tools 值报错退出(验证在交互前)', async () => {
 });
 
 test('--tools "" 空工具:输出提示且正常退出,仅生成通用层', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-'));
+  const dir = await temp('aim-cli-');
   const { stdout } = await run(process.execPath, [CLI, 'init', '--tools', '', '--yes'], { cwd: dir });
   assert.ok(stdout.includes('未启用任何工具适配'), `期望提示未启用工具, 实际: ${stdout}`);
   await assert.rejects(access(path.join(dir, 'CLAUDE.md')), '不应生成 CLAUDE.md');
@@ -71,10 +74,10 @@ test('--tools "" 空工具:输出提示且正常退出,仅生成通用层', asyn
 });
 
 test('--import 导入存在文件并明确报告缺失文件回退', async () => {
-  const source = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-source-'));
+  const source = await temp('aim-cli-source-');
   await mkdir(path.join(source, '.ai', 'memory'), { recursive: true });
   await writeFile(path.join(source, '.ai', 'memory', 'user-profile.md'), 'IMPORTED_PROFILE\n');
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-'));
+  const dir = await temp('aim-cli-');
   const { stdout } = await run(process.execPath, [CLI, 'init', '--tools', '', '--import', source, '--yes'], { cwd: dir });
   assert.equal(await readFile(path.join(dir, '.ai', 'memory', 'user-profile.md'), 'utf8'), 'IMPORTED_PROFILE\n');
   assert.ok(stdout.includes('已导入 .ai/memory/user-profile.md'));
@@ -82,7 +85,7 @@ test('--import 导入存在文件并明确报告缺失文件回退', async () =>
 });
 
 test('--import 目录不存在时报错且不生成文件', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-'));
+  const dir = await temp('aim-cli-');
   const missing = path.join(dir, 'missing-import');
   await assert.rejects(
     run(process.execPath, [CLI, 'init', '--tools', '', '--import', missing, '--yes'], { cwd: dir }),
@@ -92,9 +95,9 @@ test('--import 目录不存在时报错且不生成文件', async () => {
 });
 
 test('准备阶段失败时报告已写入与尚未写入文件', async () => {
-  const source = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-source-'));
+  const source = await temp('aim-cli-source-');
   await mkdir(path.join(source, '.ai', 'memory', 'feedback.md'), { recursive: true });
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-'));
+  const dir = await temp('aim-cli-');
   await assert.rejects(
     run(process.execPath, [CLI, 'init', '--tools', '', '--import', source, '--yes'], { cwd: dir }),
     (err) => {
@@ -109,7 +112,7 @@ test('准备阶段失败时报告已写入与尚未写入文件', async () => {
 });
 
 test('update --dry-run 对元数据项目识别用户修改且不写文件', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-'));
+  const dir = await temp('aim-cli-');
   await run(process.execPath, [CLI, 'init', '--tools', '', '--yes'], { cwd: dir });
   const criticPath = path.join(dir, '.ai', 'skills', 'critic.md');
   await writeFile(criticPath, 'USER_EDITED\n');
@@ -131,7 +134,7 @@ test('update --dry-run 对元数据项目识别用户修改且不写文件', asy
 });
 
 test('v0.1 legacy 项目只能先 update --dry-run,不能重新 init', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-legacy-'));
+  const dir = await temp('aim-cli-legacy-');
   await mkdir(path.join(dir, '.ai', 'memory'), { recursive: true });
   await writeFile(path.join(dir, '.ai', 'README.md'), '# legacy\n由 @betterdanlins/ai-memory 生成于 2026-07-01。\n');
   await writeFile(path.join(dir, '.ai', 'memory', 'project-state.md'), '- 项目:demo\n- 技术栈:Go\n');
@@ -150,7 +153,7 @@ test('v0.1 legacy 项目只能先 update --dry-run,不能重新 init', async () 
 });
 
 test('update 必须且只能选择 dry-run 或 yes', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-'));
+  const dir = await temp('aim-cli-');
   await run(process.execPath, [CLI, 'init', '--tools', '', '--yes'], { cwd: dir });
   await assert.rejects(
     run(process.execPath, [CLI, 'update'], { cwd: dir }),
@@ -163,7 +166,7 @@ test('update 必须且只能选择 dry-run 或 yes', async () => {
 });
 
 test('未修改的 v0.1 legacy 项目可安全升级且保留记忆', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-legacy-'));
+  const dir = await temp('aim-cli-legacy-');
   await cp(LEGACY_FIXTURE, dir, { recursive: true });
 
   const preview = await run(process.execPath, [CLI, 'update', '--dry-run'], { cwd: dir });
@@ -183,13 +186,13 @@ test('未修改的 v0.1 legacy 项目可安全升级且保留记忆', async () =
 });
 
 test('init 可显式启用 balanced 模型路由且拒绝未知 profile', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-routing-'));
+  const dir = await temp('aim-cli-routing-');
   const { stdout } = await run(process.execPath, [CLI, 'init', '--tools', '', '--model-profile', 'balanced', '--yes'], { cwd: dir });
   assert.ok(stdout.includes('模型路由:balanced'));
   const config = JSON.parse(await readFile(path.join(dir, '.ai/config/model-routing.json'), 'utf8'));
   assert.equal(config.profile, 'balanced');
 
-  const invalid = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-routing-'));
+  const invalid = await temp('aim-cli-routing-');
   await assert.rejects(
     run(process.execPath, [CLI, 'init', '--tools', '', '--model-profile', 'fast', '--yes'], { cwd: invalid }),
     /model profile 仅支持/
@@ -197,7 +200,7 @@ test('init 可显式启用 balanced 模型路由且拒绝未知 profile', async 
 });
 
 test('models configure/show 切换路由但不修改框架元数据', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-routing-'));
+  const dir = await temp('aim-cli-routing-');
   await run(process.execPath, [CLI, 'init', '--tools', '', '--yes'], { cwd: dir });
   const metadataBefore = await readFile(path.join(dir, '.ai/ai-memory.json'), 'utf8');
   const configured = await run(process.execPath, [CLI, 'models', 'configure', '--profile', 'balanced'], { cwd: dir });
@@ -209,7 +212,7 @@ test('models configure/show 切换路由但不修改框架元数据', async () =
 });
 
 test('workflow prepare/verify 检测正式输入变化', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-workflow-'));
+  const dir = await temp('aim-cli-workflow-');
   await run(process.execPath, [CLI, 'init', '--tools', '', '--model-profile', 'balanced', '--yes'], { cwd: dir });
   await mkdir(path.join(dir, 'docs', 'design', 'v1.0.0'), { recursive: true });
   const designPath = path.join(dir, 'docs', 'design', 'v1.0.0', 'login.md');
@@ -239,7 +242,7 @@ test('workflow prepare/verify 检测正式输入变化', async () => {
 });
 
 test('update 只替换 AGENTS.md 受管区块并保留用户内容', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-cli-managed-'));
+  const dir = await temp('aim-cli-managed-');
   await run(process.execPath, [CLI, 'init', '--tools', 'codex', '--yes'], { cwd: dir });
   const agentsPath = path.join(dir, 'AGENTS.md');
   const original = await readFile(agentsPath, 'utf8');

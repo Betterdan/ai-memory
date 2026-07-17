@@ -1,6 +1,6 @@
 {
   "name": "@betterdanlins/ai-memory",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "AI memory + requirements workflow scaffolder for Claude Code & Codex",
   "type": "module",
   "bin": {
@@ -15,7 +15,9 @@
     "node": ">=20.17.0"
   },
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "test:package": "node scripts/verify-package.mjs",
+    "verify": "npm test && npm run test:package"
   },
   "license": "MIT",
   "author": "Betterdan",
