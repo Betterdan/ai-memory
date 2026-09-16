@@ -26,5 +26,3 @@
 - 业务规则、实体与状态流转 → `../knowledge/domains/<领域>.md`
 - 某个决定为什么这么定 → `../knowledge/decisions/`
 - 命令与代码约定 → `../knowledge/conventions.md`
-
-<!-- features/ 为过渡期遗留目录,内容将迁入 knowledge/entries 与 knowledge/domains;迁移前仍按行登记 -->

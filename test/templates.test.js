@@ -26,7 +26,6 @@ export const EXPECTED_COMMON = [
   '.ai/knowledge/iterations.md',
   '.ai/knowledge/overview.md',
   '.ai/memory/MEMORY.md',
-  '.ai/memory/features/.gitkeep',
   '.ai/memory/feedback.md',
   '.ai/memory/session-log.md',
   '.ai/memory/user-profile.md',
@@ -549,5 +548,35 @@ test('记忆层收敛为过程记录,当前状态一律进 knowledge', async () 
     const rel = path.relative(ROOT, file).split(path.sep).join('/');
     const body = await readFile(file, 'utf8');
     assert.ok(!body.includes('project-state'), `${rel} 仍引用已删除的 project-state`);
+  }
+});
+
+test('需求点落地后有知识合并协议,features 已退役', async () => {
+  const skills = path.join(ROOT, 'common', '.ai', 'skills');
+  const update = await readFile(path.join(skills, 'memory-update.md'), 'utf8');
+
+  assert.ok(update.includes('## 需求点落地后的知识合并'));
+  assert.ok(update.includes('risk-levels.md'), '触发时机必须绑定等级退出条件');
+  assert.ok(update.includes('knowledge-structure.md'), '必须先判断归属');
+
+  assert.ok(update.includes('合并改写'));
+  assert.ok(update.includes('不写「本次新增」'));
+  assert.ok(update.includes('不并列保留两个版本'));
+  assert.ok(update.includes('标记为**已取代**并保留,不删除'));
+  assert.ok(update.includes('标记为 `done`'));
+  assert.ok(update.includes('压缩为一行结论'));
+  assert.ok(update.includes('由脚本重新生成'));
+  assert.ok(update.includes('不手工编造'));
+  assert.ok(update.includes('diff 形式交用户确认'));
+
+  assert.ok(!update.includes('features/'), '写入路由不应再指向 features');
+  assert.ok(update.includes('.ai/knowledge/decisions/'));
+
+  for (const file of await collectFiles(ROOT)) {
+    const rel = path.relative(ROOT, file).split(path.sep).join('/');
+    const body = await readFile(file, 'utf8');
+    for (const stale of ['features/', 'feature 记忆', '功能档案']) {
+      assert.ok(!body.includes(stale), `${rel} 仍引用已退役的 ${stale}`);
+    }
   }
 });

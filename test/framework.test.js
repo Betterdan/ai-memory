@@ -177,11 +177,16 @@ test('未修改的旧版项目升级时受管区块替换 Superpowers 编排且�
     userBlock,
   ].join('\n');
   await writeFile(path.join(dir, 'CLAUDE.md'), oldEntry);
+  await mkdir(path.join(dir, '.ai', 'memory', 'features'), { recursive: true });
+  await writeFile(path.join(dir, '.ai', 'memory', 'features', 'legacy-feature.md'), 'KEEP_FEATURE_DOSSIER');
 
   const metadata = {
     frameworkVersion: '0.7.0', schemaVersion: 1, generatedAt: '2026-09-01T00:00:00.000Z',
     tools: ['claude'], templateVars: { projectName: 'demo', techStack: 'Node', date: '2026-09-01' },
-    files: { 'CLAUDE.md': { ownership: 'mixed', sha256: hashContent(oldEntry) } },
+    files: {
+      'CLAUDE.md': { ownership: 'mixed', sha256: hashContent(oldEntry) },
+      '.ai/memory/features/legacy-feature.md': { ownership: 'user', sha256: hashContent('KEEP_FEATURE_DOSSIER') },
+    },
   };
   await writeFile(path.join(dir, '.ai', 'ai-memory.json'), JSON.stringify(metadata));
 
@@ -195,6 +200,7 @@ test('未修改的旧版项目升级时受管区块替换 Superpowers 编排且�
   assert.equal(actionOf('docs/architecture/interfaces.md'), 'add');
   assert.equal(actionOf('.ai/knowledge/overview.md'), 'add');
   assert.equal(actionOf('.ai/skills/knowledge-structure.md'), 'add');
+  assert.equal(actionOf('.ai/memory/features/legacy-feature.md'), 'preserve');
   assert.deepEqual(
     plan.actions.filter(item => ['merge', 'review', 'review-remove'].includes(item.action)).map(item => item.dest),
     []
@@ -206,4 +212,5 @@ test('未修改的旧版项目升级时受管区块替换 Superpowers 编排且�
   assert.ok(!/superpowers/i.test(upgraded));
   assert.ok(upgraded.includes('## 方案比较、实施计划与代码审查'));
   await access(path.join(dir, '.claude', 'skills', 'code-review', 'SKILL.md'));
+  assert.equal(await readFile(path.join(dir, '.ai', 'memory', 'features', 'legacy-feature.md'), 'utf8'), 'KEEP_FEATURE_DOSSIER');
 });

@@ -146,8 +146,7 @@ v0.7.0 改变的是发布验证，不修改项目所有的工作流数据。正�
 │   ├── MEMORY.md             # 核心/按需记忆加载索引
 │   ├── session-log.md        # 进展与下一步的流水日志
 │   ├── user-profile.md       # 背景、偏好、沟通方式
-│   ├── feedback.md           # 从反馈提炼的行为规范
-│   └── features/             # 过渡期遗留,内容将迁入 knowledge/
+│   └── feedback.md           # 从反馈提炼的行为规范
 ├── runs/                     # 本地交接与阶段回执;默认不进入 Git
 └── skills/                   # 方法论:requirements-flow、architecture、
                               # feature-design、model-routing、delivery-readiness 等

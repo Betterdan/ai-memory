@@ -29,4 +29,4 @@
 
 - `docs/architecture/` 保存系统、数据、质量属性和部署基线。
 - `docs/design/` 只记录功能相对基线的 how 与增量影响。
-- 实现完成后的稳定决策摘要进入 `.ai/memory/features/`，不要复制整份设计文档。
+- 实现完成后的稳定行为与决策按 `.ai/skills/knowledge-structure.md` 并入 `.ai/knowledge/`，不要复制整份设计文档。

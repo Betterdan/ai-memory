@@ -21,8 +21,8 @@
 | 了解系统现状 | `knowledge/overview.md` + 相关 `knowledge/entries/`、`knowledge/domains/` |
 | 写入知识 | `skills/knowledge-structure.md` 判断归属,再写对应页面 |
 | 0→1、首次基线、重大重构 | `skills/project-inception.md` + 现有 `docs/architecture/` |
-| 新建需求集合 / 定稿需求点 | `skills/requirements-flow.md` + 相关 feature 记忆与需求文档 |
-| M/L 功能 how | `skills/feature-design.md` + final 需求、相关架构基线与 feature 记忆 |
+| 新建需求集合 / 定稿需求点 | `skills/requirements-flow.md` + 相关入口页、领域页与需求文档 |
+| M/L 功能 how | `skills/feature-design.md` + final 需求、相关架构基线与入口页、领域页 |
 | 实现或修复 | final 需求、适用设计/计划；跨模型时再读 `skills/model-routing.md` |
 | Review | `skills/code-review.md` + 契约、diff 与验证证据 |
 | 交付/发布 | `skills/delivery-readiness.md` + final 需求、设计、架构基线与差异 |
@@ -33,7 +33,7 @@
 - `ai-memory.json` — 框架版本、Schema、启用工具、文件所有权与生成基线哈希;供安全升级预检使用
 - `config/model-routing.json` — 可选阶段模型策略;默认 `inherit` 不改变旧行为
 - `knowledge/` — 当前知识:overview 概览、entries/ 入口页、domains/ 领域页、decisions/ 决策记录、iterations 迭代记录、conventions 开发约定
-- `memory/` — 过程记录与用户级记忆:MEMORY.md 索引、session-log 流水、user-profile/feedback;features/ 为过渡期遗留目录
+- `memory/` — 过程记录与用户级记忆:MEMORY.md 索引、session-log 流水、user-profile/feedback
 - `runs/` — 本地交接清单和阶段回执;默认不进入 Git
 - `skills/` — 方法论层:risk-levels、interface-contract、knowledge-structure、project-inception、requirements-flow、feature-design、delivery-readiness、model-routing、code-review、critic、memory-update
 

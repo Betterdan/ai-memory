@@ -146,8 +146,7 @@ v0.7.0 changes release validation rather than project-owned workflow data. Norma
 │   ├── MEMORY.md             # core/on-demand memory loading index
 │   ├── session-log.md        # rolling log of progress & next steps
 │   ├── user-profile.md       # background, preferences, communication style
-│   ├── feedback.md           # behavioral norms distilled from feedback
-│   └── features/             # transitional; contents migrate into knowledge/
+│   └── feedback.md           # behavioral norms distilled from feedback
 ├── runs/                     # local handoffs and stage receipts; ignored by Git
 └── skills/                   # methodology: requirements-flow, architecture,
                               # feature-design, model-routing, delivery-readiness, etc.
