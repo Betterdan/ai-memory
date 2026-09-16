@@ -21,21 +21,9 @@
   },
   "license": "MIT",
   "author": "Betterdan",
-  "keywords": [
-    "ai",
-    "memory",
-    "claude-code",
-    "codex",
-    "scaffold",
-    "cli"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Betterdan/ai-memory.git"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
+  "keywords": ["ai", "memory", "claude-code", "codex", "scaffold", "cli"],
+  "repository": {"type": "git", "url": "git+https://github.com/Betterdan/ai-memory.git"},
+  "publishConfig": {"access": "public"},
   "dependencies": {
     "@inquirer/prompts": "^8.5.2",
     "commander": "^15.0.0"
