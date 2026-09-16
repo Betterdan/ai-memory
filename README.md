@@ -206,6 +206,7 @@ AGENTS.md + .agents/ + .codex/# Codex: skills and model-specific custom agents
 | `migrate --dry-run` | Preview the Schema migration of user-owned assets without writing anything |
 | `migrate --yes` | Run the migration; `schemaVersion` is raised only after every change is written |
 | `kb build [--dry-run]` | Regenerate the knowledge index and domain cross-views from page frontmatter; only rewrites generated blocks |
+| `kb check` | Read-only validation of frontmatter, internal links, dangling references, and index staleness; exits 1 on any problem |
 | `models show` | Show the selected profile and resolved tier for every workflow stage |
 | `models configure --profile <name>` | Select `inherit`, `balanced`, or `quality` without changing requirements, designs, or code |
 | `workflow prepare` | Create a local handoff manifest with hashes of formal input documents |

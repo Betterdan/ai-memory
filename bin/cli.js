@@ -9,6 +9,7 @@ import {
   resolveModelRouting, writeModelRoutingConfig,
 } from '../src/model-routing.js';
 import { applyMigration, planMigration } from '../src/migrate.js';
+import { checkKnowledge } from '../src/knowledge-check.js';
 import { applyKnowledgeBuild, planKnowledgeBuild } from '../src/knowledge-index.js';
 import { ScaffoldError, scaffold } from '../src/scaffold.js';
 import { prepareHandoff, recordStageResult, verifyHandoff } from '../src/workflow.js';
@@ -248,9 +249,9 @@ program
     console.log(`schemaVersion 已提升到 ${plan.toSchema}`);
   });
 
-program
-  .command('kb')
-  .description('生成当前知识层的索引与横向视图')
+const kb = program.command('kb').description('维护当前知识层的索引、横向视图与校验');
+
+kb
   .command('build')
   .description('按各知识页 frontmatter 重写生成区块;标记之外不修改')
   .option('--dry-run', '只输出将写入的区块,不修改任何文件')
@@ -269,6 +270,29 @@ program
     const result = await applyKnowledgeBuild({ targetDir: process.cwd(), plan });
     console.log(`已更新 ${result.written.length} 个知识页`);
     for (const dest of result.written) console.log(`  ${dest}`);
+  });
+
+kb
+  .command('check')
+  .description('校验知识层:frontmatter、内部链接、悬空引用与索引是否过期;只读')
+  .action(async () => {
+    const result = await checkKnowledge({ targetDir: process.cwd() });
+    console.log(`已检查:入口页 ${result.counted.entry},领域页 ${result.counted.domain},决策页 ${result.counted.decision}`);
+    if (!result.problems.length) {
+      console.log('知识层校验通过');
+      return;
+    }
+    const grouped = new Map();
+    for (const problem of result.problems) {
+      if (!grouped.has(problem.kind)) grouped.set(problem.kind, []);
+      grouped.get(problem.kind).push(problem.message);
+    }
+    for (const [kind, messages] of grouped) {
+      console.log(`${kind} ${messages.length}`);
+      for (const message of messages) console.log(`  ${message}`);
+    }
+    console.log(`共 ${result.problems.length} 个问题`);
+    process.exitCode = 1;
   });
 
 program.parseAsync().catch((e) => {

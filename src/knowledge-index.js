@@ -98,7 +98,7 @@ export async function planKnowledgeBuild({ targetDir }) {
     addBlockChange(changes, dest, body, RELATED_ENTRIES, table(['入口分组', '页面'], rows));
     addBlockChange(changes, dest, body, RELATED_CONTRACTS, contracts.length
       ? contracts.map(contract => `- \`${contract}\``).join('\n')
-      : '（无）');
+      : '');
   }
 
   return { changes, skipped };
@@ -128,7 +128,9 @@ function addBlockChange(changes, dest, body, block, content) {
   changes.push({ dest, block, content });
 }
 
+// 没有内容时生成区块留空:新建项目未写任何知识页时,kb check 不应立刻报索引过期
 function table(headers, rows) {
+  if (!rows.length) return '';
   return [`| ${headers.join(' | ')} |`, `|${headers.map(() => '---').join('|')}|`, ...rows].join('\n');
 }
 

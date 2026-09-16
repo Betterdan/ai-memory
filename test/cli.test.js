@@ -278,3 +278,20 @@ test('migrate 命令在全新项目上报告无待执行迁移', async () => {
     /必须且只能指定 --dry-run 或 --yes/
   );
 });
+
+test('kb check 用退出码区分通过与失败', async () => {
+  const dir = await temp('aim-cli-kbcheck-');
+  await run(process.execPath, [CLI, 'init', '--name', 'demo', '--stack', 'Go', '--tools', '', '--yes'], { cwd: dir });
+
+  const clean = await run(process.execPath, [CLI, 'kb', 'check'], { cwd: dir });
+  assert.ok(clean.stdout.includes('知识层校验通过'));
+
+  await writeFile(path.join(dir, '.ai', 'knowledge', 'domains', 'draft.md'), '# 没有 frontmatter\n');
+  const failure = await run(process.execPath, [CLI, 'kb', 'check'], { cwd: dir }).then(
+    () => { throw new Error('存在问题时 kb check 必须以非 0 退出'); },
+    err => err
+  );
+  assert.equal(failure.code, 1);
+  assert.ok(failure.stdout.includes('frontmatter 1'));
+  assert.ok(failure.stdout.includes('共 1 个问题'));
+});
