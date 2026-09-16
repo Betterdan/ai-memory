@@ -205,6 +205,7 @@ AGENTS.md + .agents/ + .codex/# Codex:skills 与分层自定义 agents
 | `update --yes` | 应用无冲突安全更新;用户修改、混合文件冲突或缺失迁移路径会拒绝执行 |
 | `migrate --dry-run` | 预览用户资产的 Schema 迁移,不写任何文件 |
 | `migrate --yes` | 执行迁移;全部变更写入成功后才提升 `schemaVersion` |
+| `kb build [--dry-run]` | 按知识页 frontmatter 重新生成索引与领域页横向视图;只重写生成区块 |
 | `models show` | 显示当前 profile 和每个阶段解析后的模型等级 |
 | `models configure --profile <name>` | 选择 `inherit`、`balanced` 或 `quality`,不修改需求、设计或代码 |
 | `workflow prepare` | 用正式输入文档的哈希创建本地交接清单 |

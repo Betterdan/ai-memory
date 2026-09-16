@@ -19,7 +19,7 @@
 | 判断风险等级、确认是否算完成 | `skills/risk-levels.md`(各等级流程深度与退出条件的单一事实源) |
 | 改动对外接口 | `skills/interface-contract.md` + `docs/architecture/interfaces.md` |
 | 了解系统现状 | `knowledge/overview.md` + 相关 `knowledge/entries/`、`knowledge/domains/` |
-| 写入知识 | `skills/knowledge-structure.md` 判断归属,再写对应页面 |
+| 写入知识 | `skills/knowledge-structure.md` 判断归属与 frontmatter,写完运行 `ai-memory kb build` |
 | 0→1、首次基线、重大重构 | `skills/project-inception.md` + 现有 `docs/architecture/` |
 | 新建需求集合 / 定稿需求点 | `skills/requirements-flow.md` + 相关入口页、领域页与需求文档 |
 | M/L 功能 how | `skills/feature-design.md` + final 需求、相关架构基线与入口页、领域页 |

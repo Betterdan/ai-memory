@@ -514,8 +514,9 @@ test('当前知识层建立入口/领域结构与归属规则', async () => {
 
   const domains = await readFile(path.join(k, 'domains', 'README.md'), 'utf8');
   assert.ok(domains.includes('提升规则'));
-  assert.ok(domains.includes('由脚本生成'));
-  assert.ok(domains.includes('不要手工总结'), '横向视图不得由 AI 手工总结');
+  assert.ok(domains.includes('ai-memory kb build'), '横向视图必须指名生成命令');
+  assert.ok(domains.includes('请勿手工编辑'), '横向视图不得由 AI 手工总结');
+  assert.ok(domains.includes('ai-memory:generated:related-entries'), '页模板必须带生成区标记');
 
   const decisions = await readFile(path.join(k, 'decisions', 'README.md'), 'utf8');
   assert.ok(decisions.includes('已取代'));
@@ -565,8 +566,8 @@ test('需求点落地后有知识合并协议,features 已退役', async () => {
   assert.ok(update.includes('标记为**已取代**并保留,不删除'));
   assert.ok(update.includes('标记为 `done`'));
   assert.ok(update.includes('压缩为一行结论'));
-  assert.ok(update.includes('由脚本重新生成'));
-  assert.ok(update.includes('不手工编造'));
+  assert.ok(update.includes('ai-memory kb build'), '第 6 步必须指名生成命令');
+  assert.ok(update.includes('生成区块内的内容一律不手工编辑'));
   assert.ok(update.includes('diff 形式交用户确认'));
 
   assert.ok(!update.includes('features/'), '写入路由不应再指向 features');
@@ -578,5 +579,30 @@ test('需求点落地后有知识合并协议,features 已退役', async () => {
     for (const stale of ['features/', 'feature 记忆', '功能档案']) {
       assert.ok(!body.includes(stale), `${rel} 仍引用已退役的 ${stale}`);
     }
+  }
+});
+
+test('frontmatter 规范与生成区标记写入方法论,两套标记物理隔离', async () => {
+  const rules = await readFile(path.join(ROOT, 'common', '.ai', 'skills', 'knowledge-structure.md'), 'utf8');
+  assert.ok(rules.includes('## frontmatter 规范'));
+  for (const field of ['`group`', '`form`', '`summary`', '`contract`', '`domains`', '`status`', '`date`']) {
+    assert.ok(rules.includes(field), `frontmatter 规范缺少字段: ${field}`);
+  }
+  assert.ok(rules.includes('## 生成区块'));
+  assert.ok(rules.includes('不要手工编辑'));
+  assert.ok(rules.includes('保守失败'));
+
+  const overview = await readFile(path.join(ROOT, 'common', '.ai', 'knowledge', 'overview.md'), 'utf8');
+  assert.ok(overview.includes('ai-memory:generated:entries-index:start'));
+  assert.ok(overview.includes('ai-memory:generated:domains-index:start'));
+
+  for (const file of await collectFiles(ROOT)) {
+    const rel = path.relative(ROOT, file).split(path.sep).join('/');
+    const body = await readFile(file, 'utf8');
+    if (!body.includes('ai-memory:generated')) continue;
+    assert.ok(!body.includes('ai-memory:managed'), `${rel} 不得混用两套区块标记`);
+    // knowledge-structure.md 是规范文档,必须写出标记格式本身
+    const allowed = rel.startsWith('common/.ai/knowledge/') || rel === 'common/.ai/skills/knowledge-structure.md';
+    assert.ok(allowed, `生成区标记只应出现在知识层或其规范文档: ${rel}`);
   }
 });

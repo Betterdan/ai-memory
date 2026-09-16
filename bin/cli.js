@@ -9,6 +9,7 @@ import {
   resolveModelRouting, writeModelRoutingConfig,
 } from '../src/model-routing.js';
 import { applyMigration, planMigration } from '../src/migrate.js';
+import { applyKnowledgeBuild, planKnowledgeBuild } from '../src/knowledge-index.js';
 import { ScaffoldError, scaffold } from '../src/scaffold.js';
 import { prepareHandoff, recordStageResult, verifyHandoff } from '../src/workflow.js';
 
@@ -245,6 +246,29 @@ program
     for (const dest of result.archived) console.log(`  归档 ${dest}`);
     for (const dest of result.skipped) console.log(`  跳过 ${dest}`);
     console.log(`schemaVersion 已提升到 ${plan.toSchema}`);
+  });
+
+program
+  .command('kb')
+  .description('生成当前知识层的索引与横向视图')
+  .command('build')
+  .description('按各知识页 frontmatter 重写生成区块;标记之外不修改')
+  .option('--dry-run', '只输出将写入的区块,不修改任何文件')
+  .action(async (opts) => {
+    const plan = await planKnowledgeBuild({ targetDir: process.cwd() });
+    for (const item of plan.skipped) console.log(`跳过 ${item}`);
+    if (!plan.changes.length) {
+      console.log('生成区块已是最新');
+      return;
+    }
+    for (const change of plan.changes) console.log(`  重写 ${change.dest} 的 ${change.block}`);
+    if (opts.dryRun) {
+      console.log('dry-run:未修改任何文件');
+      return;
+    }
+    const result = await applyKnowledgeBuild({ targetDir: process.cwd(), plan });
+    console.log(`已更新 ${result.written.length} 个知识页`);
+    for (const dest of result.written) console.log(`  ${dest}`);
   });
 
 program.parseAsync().catch((e) => {

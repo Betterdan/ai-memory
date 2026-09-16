@@ -7,10 +7,13 @@
 ## 记录模板
 
 ```
-# <决策标题>
+---
+type: decision
+status: active
+date: YYYY-MM-DD
+---
 
-> 状态:生效 | 已取代(被 <文件名> 取代)
-> 日期:YYYY-MM-DD
+# <决策标题>
 
 ## 决策
 
@@ -21,4 +24,11 @@
 ## 影响范围
 
 （涉及的入口页与领域页链接）
+```
+
+被取代时把 frontmatter 改为:
+
+```
+status: superseded
+superseded_by: YYYY-MM-DD-新决策.md
 ```

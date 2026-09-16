@@ -13,17 +13,17 @@
 
 ## 对外入口概览
 
-（索引由脚本生成,脚本提供前手工维护;完整形态清单见 `docs/architecture/interfaces.md`）
+下表由 `ai-memory kb build` 生成,请勿手工编辑;完整形态清单见 `docs/architecture/interfaces.md`。
 
-| 入口分组 | 说明 | 页面 |
-|---|---|---|
+<!-- ai-memory:generated:entries-index:start -->
+<!-- ai-memory:generated:entries-index:end -->
 
 ## 业务领域概览
 
-（索引由脚本生成,脚本提供前手工维护）
+下表由 `ai-memory kb build` 生成,请勿手工编辑。
 
-| 领域 | 说明 | 页面 |
-|---|---|---|
+<!-- ai-memory:generated:domains-index:start -->
+<!-- ai-memory:generated:domains-index:end -->
 
 ## 已知遗留问题
 
