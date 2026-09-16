@@ -4,6 +4,8 @@
 
 执行 CLI 时优先使用当前环境的 `ai-memory`；若命令不可用，使用 `npx --yes @betterdanlins/ai-memory@{{frameworkVersion}}`。必须固定与项目框架一致的版本，不使用未固定的 latest。
 
+阶段标识保持稳定以兼容已有 overrides:`brainstorm` 对应 `.ai/skills/feature-design.md` 的「方案比较」,`write-plan` 对应其「实施计划」;标识本身不改名。
+
 ## 执行协议
 
 1. 先由 requirements-flow / feature-design 判断是否需要该阶段，再解析模型等级。

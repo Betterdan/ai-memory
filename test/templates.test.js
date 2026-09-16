@@ -60,6 +60,7 @@ export const EXPECTED_CLAUDE = [
   '.claude/commands/project-inception.md',
   '.claude/commands/update-memory.md',
   '.claude/settings.json',
+  '.claude/skills/code-review/SKILL.md',
   '.claude/skills/critic/SKILL.md',
   '.claude/skills/delivery-readiness/SKILL.md',
   '.claude/skills/feature-design/SKILL.md',
@@ -70,6 +71,7 @@ export const EXPECTED_CLAUDE = [
   'CLAUDE.md',
 ];
 export const EXPECTED_CODEX = [
+  '.agents/skills/code-review/SKILL.md',
   '.agents/skills/critic/SKILL.md',
   '.agents/skills/delivery-readiness/SKILL.md',
   '.agents/skills/feature-design/SKILL.md',
@@ -113,7 +115,7 @@ test('新增工程 skills 适配层保持薄包装且架构基线可渲染', asy
 
   const common = await readFile(path.join(dir, '.ai/skills/project-inception.md'), 'utf8');
   assert.ok(common.includes('项目工程基线'));
-  for (const skill of ['project-inception', 'feature-design', 'delivery-readiness']) {
+  for (const skill of ['project-inception', 'feature-design', 'delivery-readiness', 'code-review']) {
     for (const adapter of [
       `.claude/skills/${skill}/SKILL.md`,
       `.agents/skills/${skill}/SKILL.md`,
@@ -136,7 +138,8 @@ test('requirements-flow 与 feature-design 分离 what/why 和 how', async () =>
   assert.ok(requirement.includes('实现交接'));
   assert.ok(requirement.includes('S |'));
   assert.ok(design.includes('技术接口契约'));
-  assert.ok(design.includes('Superpowers 路由'));
+  assert.ok(design.includes('## 方案比较'));
+  assert.ok(design.includes('## 实施计划'));
   assert.ok(design.includes('不重新讨论已确认的 what/why'));
 });
 
@@ -227,5 +230,63 @@ test('AGENTS.md 与 CLAUDE.md 使用唯一受管区块并保留用户区块', as
     assert.equal(body.match(/<!-- ai-memory:user:start -->/g)?.length, 1);
     assert.equal(body.match(/<!-- ai-memory:user:end -->/g)?.length, 1);
     assert.ok(body.includes('进场先读 `.ai/README.md`'));
+    assert.ok(!/superpowers/i.test(body), `${entry} 仍引用 Superpowers`);
+    assert.ok(body.includes('code-review skill'), `${entry} 必须路由到 code-review skill`);
   }
 });
+
+test('代码审查是正式 skill,适配层薄包装并在任务路由中登记', async () => {
+  const review = await readFile(path.join(ROOT, 'common', '.ai', 'skills', 'code-review.md'), 'utf8');
+  assert.ok(!review.includes('不注册为 skill'), 'code-review 必须是正式 skill');
+  assert.ok(review.includes('## 触发时机'));
+  assert.ok(review.includes('P0'));
+  assert.ok(review.includes('契约一致'));
+
+  const protocol = await readFile(path.join(ROOT, 'common', '.ai', 'README.md'), 'utf8');
+  assert.ok(/\| Review \|.*code-review\.md/.test(protocol), '任务路由表必须指向 code-review skill');
+
+  for (const adapter of [
+    'claude/.claude/skills/code-review/SKILL.md',
+    'codex/.agents/skills/code-review/SKILL.md',
+  ]) {
+    const body = await readFile(path.join(ROOT, ...adapter.split('/')), 'utf8');
+    const frontmatter = body.split('---')[1].trim().split('\n').map(line => line.split(':', 1)[0]);
+    assert.deepEqual(frontmatter, ['name', 'description']);
+  }
+});
+
+test('流程不再依赖 Superpowers,阶段标识仅在模型路由相关文件中保留', async () => {
+  const repoRoot = path.join(ROOT, '..');
+  const STAGE_ID_ALLOWED = new Set([
+    'src/model-routing.js',
+    'templates/common/.ai/skills/model-routing.md',
+    'templates/common/.ai/skills/feature-design.md',
+  ]);
+  const scanned = [
+    ...(await collectFiles(path.join(repoRoot, 'templates'))),
+    ...(await collectFiles(path.join(repoRoot, 'src'))),
+    path.join(repoRoot, 'README.md'),
+    path.join(repoRoot, 'README.zh-CN.md'),
+  ];
+  assert.ok(scanned.length > 40, '扫描范围异常');
+
+  for (const file of scanned) {
+    const rel = path.relative(repoRoot, file).split(path.sep).join('/');
+    const body = await readFile(file, 'utf8');
+    assert.ok(!/superpower|brainstorming|writing-plans/i.test(body), `${rel} 仍引用 Superpowers`);
+    if (/brainstorm|write-plan/.test(body)) {
+      assert.ok(STAGE_ID_ALLOWED.has(rel), `${rel} 不应出现模型路由阶段标识`);
+    }
+  }
+});
+
+async function collectFiles(dir) {
+  const { readdir } = await import('node:fs/promises');
+  const out = [];
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...(await collectFiles(full)));
+    else out.push(full);
+  }
+  return out;
+}

@@ -142,3 +142,59 @@ test('元数据中的项目外路径在升级规划阶段即被拒绝', async (t
     /无效路径段/
   );
 });
+
+test('未修改的旧版项目升级时受管区块替换 Superpowers 编排且新增 code-review 适配', async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-r1-review-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await mkdir(path.join(dir, '.ai'), { recursive: true });
+
+  const userBlock = [
+    '<!-- ai-memory:user:start -->',
+    '## 项目信息',
+    '',
+    '- 技术栈:Node',
+    '- 启动:npm run dev',
+    '<!-- ai-memory:user:end -->',
+    '',
+  ].join('\n');
+  const oldEntry = [
+    '# demo',
+    '',
+    '<!-- ai-memory:managed:start -->',
+    '## AI 协作框架(ai-memory)',
+    '',
+    '进场先读 `.ai/README.md`,严格按其中的核心记忆与任务路由加载协议执行。',
+    '',
+    '## 与 superpowers 的编排(未安装则忽略本节)',
+    '',
+    '1. S 级跳过 brainstorming/writing-plans',
+    '<!-- ai-memory:managed:end -->',
+    '',
+    userBlock,
+  ].join('\n');
+  await writeFile(path.join(dir, 'CLAUDE.md'), oldEntry);
+
+  const metadata = {
+    frameworkVersion: '0.7.0', schemaVersion: 1, generatedAt: '2026-09-01T00:00:00.000Z',
+    tools: ['claude'], templateVars: { projectName: 'demo', techStack: 'Node', date: '2026-09-01' },
+    files: { 'CLAUDE.md': { ownership: 'mixed', sha256: hashContent(oldEntry) } },
+  };
+  await writeFile(path.join(dir, '.ai', 'ai-memory.json'), JSON.stringify(metadata));
+
+  const plan = await planFrameworkUpdate({ targetDir: dir, templatesRoot: TEMPLATES, frameworkVersion: '0.8.0' });
+  const actionOf = dest => plan.actions.find(item => item.dest === dest)?.action;
+  assert.equal(actionOf('CLAUDE.md'), 'update-managed');
+  assert.equal(actionOf('.claude/skills/code-review/SKILL.md'), 'add');
+  assert.equal(actionOf('.ai/skills/code-review.md'), 'add');
+  assert.deepEqual(
+    plan.actions.filter(item => ['merge', 'review', 'review-remove'].includes(item.action)).map(item => item.dest),
+    []
+  );
+
+  await applyFrameworkUpdate({ targetDir: dir, templatesRoot: TEMPLATES, plan });
+  const upgraded = await readFile(path.join(dir, 'CLAUDE.md'), 'utf8');
+  assert.ok(upgraded.includes(userBlock), '用户区块必须原样保留');
+  assert.ok(!/superpowers/i.test(upgraded));
+  assert.ok(upgraded.includes('## 方案比较、实施计划与代码审查'));
+  await access(path.join(dir, '.claude', 'skills', 'code-review', 'SKILL.md'));
+});

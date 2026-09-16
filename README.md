@@ -207,7 +207,7 @@ The generator is a small set of focused modules:
 - **Engineering-node memory** — write session-log entries for independently verifiable features/phases, durable decisions, status changes, or tool handoffs, avoiding noise from tiny implementation steps.
 - **Dual requirement directories** — human draft (`draft/`) → AI final (`final/`) behind a mandatory critic gate.
 - **Project engineering baseline** — 0-to-1 projects establish language-agnostic system, data, quality-attribute, and deployment baselines once; ordinary features record only deltas.
-- **Risk-tiered design** — S-risk requirements proceed directly to implementation; M/L-risk work uses feature-design for how, technical contracts, and engineering impact, with Superpowers selected only when justified by risk.
+- **Risk-tiered design** — S-risk requirements proceed directly to implementation; M/L-risk work uses feature-design for how, technical contracts, and engineering impact, with option comparison and staged implementation plans used only when the risk justifies them.
 - **Optional cost routing** — `inherit` preserves prior behavior; explicit profiles can use stronger models for planning/review and cheaper workers for bounded test work while deterministic test execution uses no model.
 - **Artifact-based handoff** — cross-model stages read formal artifacts through a verified handoff rather than relying on conversational summaries; implementation receipts expose coverage, deviations, and unresolved risk to the final reviewer.
 - **Evidence-based delivery** — before release, verify applicable contracts, tests, migration, rollback, performance, observability, and operations, producing an explicit readiness verdict.
