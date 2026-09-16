@@ -18,7 +18,7 @@
 |---|---|
 | 判断风险等级、确认是否算完成 | `skills/risk-levels.md`(各等级流程深度与退出条件的单一事实源) |
 | 0→1、首次基线、重大重构 | `skills/project-inception.md` + 现有 `docs/architecture/` |
-| 新建/定稿需求 | `skills/requirements-flow.md` + 相关 feature 记忆与需求文档 |
+| 新建需求集合 / 定稿需求点 | `skills/requirements-flow.md` + 相关 feature 记忆与需求文档 |
 | M/L 功能 how | `skills/feature-design.md` + final 需求、相关架构基线与 feature 记忆 |
 | 实现或修复 | final 需求、适用设计/计划；跨模型时再读 `skills/model-routing.md` |
 | Review | `skills/code-review.md` + 契约、diff 与验证证据 |

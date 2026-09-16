@@ -11,8 +11,11 @@
 
 ## 需求进度
 
-| 版本 | 需求 | 状态(draft/finalized/designed/in-progress/done) | 备注 |
-|---|---|---|---|
+> 按需求点登记;同一需求集合的点靠命名前缀归组。
+> 状态:planned(已拆分待定稿)/draft/finalized/designed/in-progress/done
+
+| 版本 | 需求点 | 风险 | 状态 | 备注(依赖与顺序) |
+|---|---|---|---|---|
 
 ## 已知遗留问题
 

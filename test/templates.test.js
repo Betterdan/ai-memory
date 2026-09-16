@@ -355,3 +355,60 @@ test('入口受管区块与任务路由登记风险等级单一事实源', async
     assert.ok(!SELF_CHECK_S.test(text), `${rel} 仍要求 S 级自检`);
   }
 });
+
+test('需求流程以需求点为推进单位,含拆分判断与就绪标准', async () => {
+  const flow = await readFile(path.join(ROOT, 'common', '.ai', 'skills', 'requirements-flow.md'), 'utf8');
+
+  assert.ok(flow.includes('推进单位是需求点'));
+  assert.ok(flow.includes('**需求集合**：`draft/<集合名>.md`'));
+  assert.ok(flow.includes('**需求点**：`final/<集合名>-<点名>.md`'));
+
+  assert.ok(flow.includes('## 拆分判断'));
+  for (const signal of [
+    '包含多个独立可观察的行为变化',
+    '验收标准之间没有依赖',
+    '各部分风险等级明显不同',
+    '后面部分依赖前面的实现结果',
+    '预计 diff 过大',
+  ]) {
+    assert.ok(flow.includes(signal), `缺少拆分信号: ${signal}`);
+  }
+  assert.ok(flow.includes('不拆的情况'));
+  assert.ok(flow.includes('一句话目标、风险等级、依赖关系与建议顺序'));
+
+  assert.ok(flow.includes('## 需求点就绪标准'));
+  for (const item of ['目标单一', '验收标准可验证', '范围明确', '接口契约已确认', '无阻塞开放问题', '可独立提交']) {
+    assert.ok(flow.includes(`**${item}**`), `缺少就绪标准: ${item}`);
+  }
+  assert.ok(flow.includes('六条全部满足即进入实现，不再额外审查'));
+
+  assert.ok(flow.includes('一次只完整定稿一个需求点'));
+  assert.ok(flow.includes('`planned` 登记'));
+  assert.ok(flow.includes('两者不叠加'), '必须写明就绪标准与 critic 不叠加');
+});
+
+test('需求目录、进度表与适配层按需求点表述', async () => {
+  const readme = await readFile(path.join(ROOT, 'common', 'docs', 'requirements', 'README.md'), 'utf8');
+  assert.ok(readme.includes('`final/<集合名>-<点名>.md`'));
+  assert.ok(readme.includes('需求集合'));
+
+  const state = await readFile(path.join(ROOT, 'common', '.ai', 'memory', 'project-state.md'), 'utf8');
+  assert.ok(state.includes('| 版本 | 需求点 | 风险 | 状态 | 备注(依赖与顺序) |'));
+  assert.ok(state.includes('planned(已拆分待定稿)'));
+
+  const finalize = await readFile(path.join(ROOT, 'claude', '.claude', 'commands', 'finalize-requirement.md'), 'utf8');
+  assert.ok(finalize.includes('拆分判断'));
+  assert.ok(finalize.includes('就绪标准'));
+
+  const codexFlow = await readFile(path.join(ROOT, 'codex', '.agents', 'skills', 'requirements-flow', 'SKILL.md'), 'utf8');
+  assert.ok(codexFlow.includes('M/L 级的 critic 门'), 'codex 侧 critic 门必须限定等级');
+  assert.ok(codexFlow.includes('S 级不做自检'));
+
+  for (const file of await collectFiles(ROOT)) {
+    const rel = path.relative(ROOT, file).split(path.sep).join('/');
+    const body = await readFile(file, 'utf8');
+    if (body.includes('draft') && body.includes('final')) {
+      assert.ok(body.includes('需求点'), `${rel} 描述了 draft→final 却未按需求点表述`);
+    }
+  }
+});

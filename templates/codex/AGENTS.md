@@ -8,7 +8,7 @@
 
 - 风险等级与退出条件 → `.ai/skills/risk-levels.md`;S 级走轻量路径,不建 handoff、不写交付报告
 - 0→1 项目/首次架构基线/重大重构 → project-inception skill,产物在 `docs/architecture/`;普通功能不要重复触发
-- 需求 what/why 与外部行为定稿 → requirements-flow skill,产物在 `docs/requirements/vX.Y.Z/{draft,final}/`
+- 需求 what/why 与外部行为定稿 → requirements-flow skill;draft/ 是需求集合,final/ 按需求点逐个定稿,一次只定稿一个点
 - M/L 级功能 how 与技术接口 → feature-design skill,产物在 `docs/design/vX.Y.Z/`;S 级可直接实现
 - 交付前 → delivery-readiness skill,按风险验证契约、测试、迁移、回滚、性能与可观测性
 - 记忆更新 → 只在可验收工程节点、关键决策、状态变化或会话切换时写
