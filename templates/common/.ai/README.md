@@ -16,6 +16,7 @@
 
 | 任务 | 必读增量 |
 |---|---|
+| 判断风险等级、确认是否算完成 | `skills/risk-levels.md`(各等级流程深度与退出条件的单一事实源) |
 | 0→1、首次基线、重大重构 | `skills/project-inception.md` + 现有 `docs/architecture/` |
 | 新建/定稿需求 | `skills/requirements-flow.md` + 相关 feature 记忆与需求文档 |
 | M/L 功能 how | `skills/feature-design.md` + final 需求、相关架构基线与 feature 记忆 |
@@ -30,7 +31,7 @@
 - `config/model-routing.json` — 可选阶段模型策略;默认 `inherit` 不改变旧行为
 - `memory/` — 记忆层:MEMORY.md 索引、project-state 全景、session-log 流水、user-profile/feedback 用户级记忆、features/ 功能档案
 - `runs/` — 本地交接清单和阶段回执;默认不进入 Git
-- `skills/` — 方法论层:project-inception、requirements-flow、feature-design、delivery-readiness、model-routing、code-review、critic、memory-update
+- `skills/` — 方法论层:risk-levels、project-inception、requirements-flow、feature-design、delivery-readiness、model-routing、code-review、critic、memory-update
 
 ## 与工具专属配置的关系
 

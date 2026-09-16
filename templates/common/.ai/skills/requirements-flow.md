@@ -19,21 +19,23 @@
    - **验收标准**：可观察、可验证
    - **开放问题**：不得隐藏阻塞项
    - **实现交接**：已确认决策、how 阶段待决定项、禁止重新讨论项、初步风险等级
-4. 先给出初步风险等级，再按 `.ai/skills/critic.md` 审查需求完整性：S 级做精简同上下文自检，M/L 级使用独立 critic（工具支持时）；逐条处理后才写 `final/<需求名>.md`。
+4. 先按 `.ai/skills/risk-levels.md` 给出初步风险等级：S 级不做自检，直接写 `final/<需求名>.md`；M/L 级按 `.ai/skills/critic.md` 审查需求完整性（工具支持时使用独立 critic），逐条处理后才写 final。
 5. 按下方路由选择下一步，不在本流程中比较实现方案。
 6. 更新 `project-state.md` 为 `finalized`；在 `features/<需求名>.md` 记录外部契约与关键决策，并更新 MEMORY 索引。
 
-若 `.ai/config/model-routing.json` 的 profile 不是 `inherit`，定稿前按 `.ai/skills/model-routing.md` 为 `requirement-finalize` 准备并校验 handoff，再使用对应等级执行者。模型路由不得改变下方 S/M/L 流程深度。
+若 `.ai/config/model-routing.json` 的 profile 不是 `inherit`，M/L 级定稿前按 `.ai/skills/model-routing.md` 为 `requirement-finalize` 准备并校验 handoff，再使用对应等级执行者；S 级不创建 handoff。模型路由不得改变下方 S/M/L 流程深度。
 
 ## 风险路由
 
-| 等级 | 判断 | 下一步 |
-|---|---|---|
-| S | 局部、可逆，不跨模块/数据/部署边界，验收明确 | 可直接实现并测试；不生成完整技术设计 |
-| M | 跨多个模块，或改变数据、公共接口、运行行为 | 执行 `feature-design`，生成精简技术设计 |
-| L | 改变系统边界、数据所有权、部署拓扑，或安全/迁移/可用性风险高 | 先更新项目基线，再执行完整 `feature-design`；只对未决高影响方案做一次方案比较 |
+等级判断标准、各等级退出条件与 S 级轻量路径见 `.ai/skills/risk-levels.md`；定稿时给出等级并说明理由。
 
-拿不准时选高一级，并在实现交接中写明原因。风险等级决定流程深度，不代表需求价值。
+| 等级 | 下一步 |
+|---|---|
+| S | 按轻量路径直接实现并测试；不生成技术设计，不做自检 |
+| M | 执行 `feature-design`，生成精简技术设计 |
+| L | 先更新项目基线，再执行完整 `feature-design`；只对未决高影响方案做一次方案比较 |
+
+拿不准时选高一级，并在实现交接中写明原因。
 
 ## 外部行为契约边界
 

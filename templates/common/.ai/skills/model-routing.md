@@ -9,7 +9,7 @@
 ## 执行协议
 
 1. 先由 requirements-flow / feature-design 判断是否需要该阶段，再解析模型等级。
-2. 跨模型执行前，用 `ai-memory workflow prepare` 从正式需求、设计和计划生成 `.ai/runs/<feature>/handoff.json`。
+2. M/L 级跨模型执行前，用 `ai-memory workflow prepare` 从正式需求、设计和计划生成 `.ai/runs/<feature>/handoff.json`；S 级按 `.ai/skills/risk-levels.md` 不创建 handoff。
 3. 执行者先运行 `ai-memory workflow verify`，再读取 handoff 中的全部输入；不得用对话摘要替代正式文档。
 4. 输入缺失、哈希变化、路由变化或存在未决问题时停止，不得猜测。
 5. 实现结束后在同一 run 目录写 `<stage>-result.json`，记录变更文件、验收覆盖、测试、设计偏差和未决风险。

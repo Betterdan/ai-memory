@@ -8,6 +8,7 @@ import { scaffold } from '../src/scaffold.js';
 import { render } from '../src/render.js';
 import { createTempDirs } from './temp-dirs.js';
 
+const SELF_CHECK_S = /S 级.*精简自检/;
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'templates');
 const tempDirs = createTempDirs();
 afterEach(() => tempDirs.cleanup());
@@ -34,6 +35,7 @@ export const EXPECTED_COMMON = [
   '.ai/skills/model-routing.md',
   '.ai/skills/project-inception.md',
   '.ai/skills/requirements-flow.md',
+  '.ai/skills/risk-levels.md',
   'docs/architecture/data-model.md',
   'docs/architecture/deployment.md',
   'docs/architecture/quality-attributes.md',
@@ -149,7 +151,7 @@ test('交付、critic 与记忆更新按风险和工程节点控制成本', asyn
   const memory = await readFile(path.join(ROOT, 'common', '.ai', 'skills', 'memory-update.md'), 'utf8');
   assert.ok(delivery.includes('ready'));
   assert.ok(delivery.includes('可观测性'));
-  assert.ok(critic.includes('S 级低风险需求'));
+  assert.ok(critic.includes('本方法只作用于 M/L 级'));
   assert.ok(critic.includes('M/L 级'));
   assert.ok(memory.includes('可独立验收'));
   assert.ok(memory.includes('不要因为写了一个测试'));
@@ -290,3 +292,66 @@ async function collectFiles(dir) {
   }
   return out;
 }
+
+test('S/M/L 等级行为集中在 risk-levels,S 级为轻量独立路径', async () => {
+  const skills = path.join(ROOT, 'common', '.ai', 'skills');
+  const levels = await readFile(path.join(skills, 'risk-levels.md'), 'utf8');
+
+  for (const section of ['## S 级', '## M 级', '## L 级']) {
+    assert.ok(levels.includes(section), `risk-levels 缺少 ${section}`);
+  }
+  assert.equal(levels.split('**退出条件**').length - 1, 3, '每个等级都必须有退出条件');
+  assert.equal(levels.split('**不做**').length - 1, 3, '每个等级都必须写明不做什么');
+
+  for (const rule of [
+    '不做 critic 自检',
+    '不创建 handoff',
+    '不生成交付就绪报告',
+    '相关测试全部通过',
+    '最多修复 2 次',
+    '只有项目状态真实变化时才更新知识',
+  ]) {
+    assert.ok(levels.includes(rule), `S 级轻量路径缺少约束: ${rule}`);
+  }
+
+  const critic = await readFile(path.join(skills, 'critic.md'), 'utf8');
+  assert.ok(!critic.includes('S 级低风险需求'), 'critic 不应再要求 S 级自检');
+  assert.ok(critic.includes('本方法只作用于 M/L 级'));
+  assert.ok(critic.includes('- M/L 级:主 agent 必须逐条回应'), '严格措辞必须限定作用域');
+
+  const delivery = await readFile(path.join(skills, 'delivery-readiness.md'), 'utf8');
+  assert.ok(delivery.includes('不生成交付就绪报告'));
+  const requirements = await readFile(path.join(skills, 'requirements-flow.md'), 'utf8');
+  assert.ok(requirements.includes('S 级不做自检'));
+  assert.ok(requirements.includes('S 级不创建 handoff'));
+  const routing = await readFile(path.join(skills, 'model-routing.md'), 'utf8');
+  assert.ok(routing.includes('S 级按 `.ai/skills/risk-levels.md` 不创建 handoff'));
+
+  for (const file of [
+    'critic.md', 'delivery-readiness.md', 'feature-design.md',
+    'requirements-flow.md', 'memory-update.md', 'model-routing.md',
+  ]) {
+    const body = await readFile(path.join(skills, file), 'utf8');
+    assert.ok(body.includes('risk-levels.md'), `${file} 必须引用 risk-levels.md`);
+  }
+});
+
+test('入口受管区块与任务路由登记风险等级单一事实源', async () => {
+  const protocol = await readFile(path.join(ROOT, 'common', '.ai', 'README.md'), 'utf8');
+  assert.ok(/\| 判断风险等级.*risk-levels\.md/.test(protocol), '任务路由表必须登记 risk-levels');
+  assert.ok(protocol.includes('方法论层:risk-levels'));
+
+  for (const entry of ['claude/CLAUDE.md', 'codex/AGENTS.md']) {
+    const body = await readFile(path.join(ROOT, ...entry.split('/')), 'utf8');
+    assert.ok(!body.includes('S 级精简自检'), `${entry} 仍要求 S 级自检`);
+    assert.ok(body.includes('S 级不做自检,直接实现并测试'));
+    assert.ok(body.includes('risk-levels.md'));
+    assert.ok(body.includes('M/L 级按 model-routing skill 创建/验证 handoff'));
+  }
+
+  for (const file of await collectFiles(ROOT)) {
+    const rel = path.relative(ROOT, file).split(path.sep).join('/');
+    const text = await readFile(file, 'utf8');
+    assert.ok(!SELF_CHECK_S.test(text), `${rel} 仍要求 S 级自检`);
+  }
+});
