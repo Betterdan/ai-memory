@@ -13,7 +13,7 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'temp
 const tempDirs = createTempDirs();
 afterEach(() => tempDirs.cleanup());
 const VARS = {
-  projectName: 'demo', techStack: 'PHP + Vue', date: '2026-07-06', modelProfile: 'inherit', frameworkVersion: '0.7.0',
+  projectName: 'demo', techStack: 'PHP + Vue', date: '2026-07-06', modelProfile: 'inherit', frameworkVersion: '0.8.0',
 };
 
 export const EXPECTED_COMMON = [
@@ -272,11 +272,11 @@ test('流程不再依赖 Superpowers,阶段标识仅在模型路由相关文件�
     'templates/common/.ai/skills/model-routing.md',
     'templates/common/.ai/skills/feature-design.md',
   ]);
+  // 只扫描进入用户项目的流程面。两份 README 的版本历史必须能写出「移除了 Superpowers」,
+  // 与 R5b 保留 v0.6.0 历史升级说明同理:文档记录历史,不构成流程依赖。
   const scanned = [
     ...(await collectFiles(path.join(repoRoot, 'templates'))),
     ...(await collectFiles(path.join(repoRoot, 'src'))),
-    path.join(repoRoot, 'README.md'),
-    path.join(repoRoot, 'README.zh-CN.md'),
   ];
   assert.ok(scanned.length > 40, '扫描范围异常');
 

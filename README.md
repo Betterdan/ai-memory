@@ -47,6 +47,15 @@ An initialized project cannot be initialized again. A newer CLI first uses `upda
 
 ## Versions and compatibility
 
+### v0.8.0 — requirement points, knowledge layer, and explicit migration
+
+- Removes the Superpowers dependency. Option comparison, implementation planning, and code review are now first-class templates; `code-review` becomes a registered skill with adapters for both tools.
+- Adds `.ai/skills/risk-levels.md` as the single source of truth for S/M/L behaviour. S becomes a lightweight independent path: no self-critique, no handoff, no design document, no delivery report — relevant tests passing is the exit condition, with at most two fix attempts before handing the failure back.
+- Requirements advance one point at a time. `draft/` holds a requirement set; `final/<set>-<point>.md` holds a single independently shippable point. Explicit split signals decide when to divide a set, and a six-item readiness standard replaces further review before implementation.
+- Adds `docs/architecture/interfaces.md` and `.ai/skills/interface-contract.md`. External entry-point forms and contract conventions live in the baseline, and changing an externally observable interface requires a confirmed contract diff at every risk level.
+- Splits memory into process records (`.ai/memory/`) and current knowledge (`.ai/knowledge/`), organised as entry-point pages (primary view) and domain pages (cross-cutting view), with exactly one home per fact and an explicit promotion rule.
+- Adds `ai-memory migrate --dry-run` / `--yes` and raises `schemaVersion` to 2. `update` keeps its original promise and never touches user-owned files.
+
 ### v0.7.0 — release engineering
 
 - Adds a GitHub Actions matrix for Windows/Linux and both the minimum supported Node.js `20.17.0` and the current LTS line.
@@ -127,6 +136,23 @@ npx @betterdanlins/ai-memory@0.7.0 update --yes
 ```
 
 v0.7.0 changes release validation rather than project-owned workflow data. Normal upgrades only refresh unchanged framework metadata/templates; user memory, requirements, designs, model profile, and entry user blocks remain unchanged.
+
+### Upgrade from v0.7.0 to v0.8.0
+
+```bash
+npx @betterdanlins/ai-memory@0.8.0 update --dry-run
+npx @betterdanlins/ai-memory@0.8.0 update --yes
+
+# User-owned assets migrate separately, after the update
+npx @betterdanlins/ai-memory@0.8.0 migrate --dry-run
+npx @betterdanlins/ai-memory@0.8.0 migrate --yes
+```
+
+Run `update` first, then `migrate`: the migration writes into knowledge files that `update` creates. `update` only adds the new framework files and refreshes managed blocks; it leaves `schemaVersion` at 1 and reports the pending migration.
+
+`migrate` merges `project-state.md` into `knowledge/overview.md` and `knowledge/iterations.md`, archives the original under `.ai/memory/archive/`, and leaves `.ai/memory/features/` in place with a list of dossiers to classify by hand against `.ai/skills/knowledge-structure.md`. Anything it cannot parse is moved verbatim into a "待整理" section instead of being dropped, and a target you have edited yourself is skipped rather than overwritten.
+
+Migration is one-way: once `schemaVersion` becomes 2, CLI versions before 0.8.0 refuse to operate on the project. If it fails midway, `schemaVersion` stays at 1 and the command can simply be run again.
 
 ## What it generates
 

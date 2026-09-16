@@ -47,6 +47,15 @@ npx @betterdanlins/ai-memory models configure --profile balanced
 
 ## 版本与兼容性
 
+### v0.8.0 —— 需求点工作流、知识层与显式迁移
+
+- 移除 Superpowers 依赖。方案比较、实施计划和代码审查收回为自有模板;`code-review` 成为正式 skill,两侧工具都有适配层。
+- 新增 `.ai/skills/risk-levels.md` 作为 S/M/L 行为的单一事实源。S 级改为轻量独立路径:不做自检、不建 handoff、不写技术设计与交付报告,相关测试通过即完成,失败最多修复两次后交回用户。
+- 需求以需求点为单位推进。`draft/` 放需求集合,`final/<集合名>-<点名>.md` 放单个可独立验收、可独立提交的点;拆分信号决定何时拆,六条就绪标准取代进入实现前的额外审查。
+- 新增 `docs/architecture/interfaces.md` 与 `.ai/skills/interface-contract.md`。对外入口形态与契约约定写入基线;改变对外可观察接口时,不论风险等级都必须先确认契约 diff。
+- 记忆拆成过程记录(`.ai/memory/`)与当前知识(`.ai/knowledge/`),按对外入口页(主视图)和业务领域页(横向视图)组织,每条知识只有一个归属并有明确的提升规则。
+- 新增 `ai-memory migrate --dry-run` / `--yes`,`schemaVersion` 提升到 2。`update` 保持原有承诺,永远不碰用户资产。
+
 ### v0.7.0 —— 发布工程化
 
 - 新增 GitHub Actions 矩阵，覆盖 Windows/Linux、最低支持 Node.js `20.17.0` 和当前 LTS。
@@ -127,6 +136,23 @@ npx @betterdanlins/ai-memory@0.7.0 update --yes
 ```
 
 v0.7.0 改变的是发布验证，不修改项目所有的工作流数据。正常升级只刷新未修改的框架元数据/模板；用户记忆、需求、设计、模型 profile 和入口 user 区块保持不变。
+
+### 从 v0.7.0 升级到 v0.8.0
+
+```bash
+npx @betterdanlins/ai-memory@0.8.0 update --dry-run
+npx @betterdanlins/ai-memory@0.8.0 update --yes
+
+# 用户资产由独立命令迁移,在 update 之后执行
+npx @betterdanlins/ai-memory@0.8.0 migrate --dry-run
+npx @betterdanlins/ai-memory@0.8.0 migrate --yes
+```
+
+先 `update` 后 `migrate`:迁移要写入的知识文件由 `update` 创建。`update` 只新增框架文件并刷新受管区块,把 `schemaVersion` 保持在 1,并报告待执行的迁移。
+
+`migrate` 把 `project-state.md` 并入 `knowledge/overview.md` 与 `knowledge/iterations.md`,原文件归档到 `.ai/memory/archive/`,`.ai/memory/features/` 原地保留并输出待归类清单,由你按 `.ai/skills/knowledge-structure.md` 人工归类。解析不了的内容整块搬进「待整理」区而不是丢弃;你自己改过的目标会被跳过,不会被覆盖。
+
+迁移是单向的:`schemaVersion` 一旦变为 2,0.8.0 之前的 CLI 将拒绝操作该项目。中途失败时 `schemaVersion` 保持为 1,直接重跑即可。
 
 ## 生成什么
 
