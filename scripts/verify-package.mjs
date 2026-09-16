@@ -65,7 +65,7 @@ try {
   ]);
 
   const preview = await run(process.execPath, [cli, 'update', '--dry-run'], { cwd: projectDir });
-  assert.ok(preview.stdout.includes(`当前:${packageJson.version} / schema 1`));
+  assert.ok(preview.stdout.includes(`当前:${packageJson.version} / schema 2`));
   assert.ok(preview.stdout.includes('需要合并 0'));
   assert.ok(preview.stdout.includes('需要人工审查 0'));
 

@@ -8,6 +8,7 @@ import {
   createModelRoutingConfig, MODEL_PROFILES, readModelRoutingConfig,
   resolveModelRouting, writeModelRoutingConfig,
 } from '../src/model-routing.js';
+import { applyMigration, planMigration } from '../src/migrate.js';
 import { ScaffoldError, scaffold } from '../src/scaffold.js';
 import { prepareHandoff, recordStageResult, verifyHandoff } from '../src/workflow.js';
 
@@ -209,6 +210,43 @@ program
     }
   });
 
+program
+  .command('migrate')
+  .description('执行 Schema 迁移并搬迁用户资产;update 不会碰用户资产')
+  .option('--dry-run', '只输出迁移计划,不修改任何文件')
+  .option('--yes', '执行迁移,全部成功后才提升 schemaVersion')
+  .action(async (opts) => {
+    if (opts.dryRun === opts.yes) throw new Error('migrate 必须且只能指定 --dry-run 或 --yes');
+    const plan = await planMigration({ targetDir: process.cwd() });
+    console.log(`当前 Schema:${plan.fromSchema} → 目标:${plan.toSchema}`);
+    if (!plan.migrations.length) {
+      console.log('没有待执行的迁移');
+      return;
+    }
+    for (const migration of plan.migrations) {
+      console.log(`迁移 ${migration.id}(${migration.from} → ${migration.to})`);
+      for (const change of migration.changes) {
+        const label = change.kind === 'write' ? '写入'
+          : change.kind === 'archive' ? '归档'
+          : change.kind === 'noop' ? '无需变更'
+          : '跳过';
+        const target = change.kind === 'archive' ? `${change.dest} → ${change.to}` : change.dest;
+        console.log(`  ${label} ${target} — ${change.reason}`);
+      }
+      for (const notice of migration.notices) console.log(`  提示 ${notice}`);
+    }
+    if (opts.dryRun) {
+      console.log('dry-run:未修改任何文件');
+      return;
+    }
+    const result = await applyMigration({ targetDir: process.cwd(), templatesRoot: TEMPLATES, plan });
+    console.log(`迁移完成:写入 ${result.written.length},归档 ${result.archived.length},跳过 ${result.skipped.length}`);
+    for (const dest of result.written) console.log(`  写入 ${dest}`);
+    for (const dest of result.archived) console.log(`  归档 ${dest}`);
+    for (const dest of result.skipped) console.log(`  跳过 ${dest}`);
+    console.log(`schemaVersion 已提升到 ${plan.toSchema}`);
+  });
+
 program.parseAsync().catch((e) => {
   if (e.name === 'ExitPromptError') {
     console.log('已取消');
@@ -257,10 +295,17 @@ function printUpdatePlan(plan) {
     if (action !== 'unchanged') for (const item of items) console.log(`  ${item.dest}`);
   }
   if (plan.migrations.length) {
-    console.log(`Schema 迁移 ${plan.migrations.length}(当前仅规划,不执行)`);
+    console.log(`Schema 迁移 ${plan.migrations.length}(随本次更新生效)`);
     for (const migration of plan.migrations) {
       console.log(`  ${migration.id}: ${migration.from} → ${migration.to}`);
     }
+  }
+  if (plan.pendingMigrations.length) {
+    console.log(`待执行的用户资产迁移 ${plan.pendingMigrations.length}(update 不碰用户资产)`);
+    for (const migration of plan.pendingMigrations) {
+      console.log(`  ${migration.id}: ${migration.from} → ${migration.to} — ${migration.description}`);
+    }
+    console.log('下一步:运行 ai-memory migrate --dry-run 预览用户资产迁移');
   }
   console.log('升级计划完成');
   if (process.argv.includes('--dry-run')) console.log('dry-run:未修改任何文件');

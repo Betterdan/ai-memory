@@ -43,6 +43,7 @@ Nothing is ever overwritten silently: existing files are asked about one by one 
 An invalid, non-directory, or unreadable `--import` project path fails explicitly. If the project directory is valid but an individual memory file is missing, the CLI falls back to its template and reports that fallback in the summary.
 Before writing, the CLI checks for duplicate template destinations, path traversal, and symbolic links, then reads and renders every planned file. If an actual filesystem write fails midway, the error summary lists both written and not-yet-written files.
 An initialized project cannot be initialized again. A newer CLI first uses `update --dry-run` to identify versions and user modifications. `update --yes` applies only additions and baseline-matching safe updates, aborting before any write when merge or review items exist.
+`update` never touches user-owned files. When a release changes how user knowledge is laid out, `update` reports the pending migration and `ai-memory migrate --dry-run` / `--yes` performs it as a separate, explicit step — run `update` first, then `migrate`. Migration is one-way: once it raises `schemaVersion`, older CLI versions refuse to operate on the project. If a migration fails midway, `schemaVersion` is left untouched so the command can simply be run again.
 
 ## Versions and compatibility
 
@@ -176,6 +177,8 @@ AGENTS.md + .agents/ + .codex/# Codex: skills and model-specific custom agents
 | `init` | Initialize a new project; refuses to run over an existing ai-memory installation |
 | `update --dry-run` | Read-only analysis of the upgrade plan from an existing project to this CLI version |
 | `update --yes` | Apply conflict-free safe updates; refuse user changes, mixed-file conflicts, or missing migration paths |
+| `migrate --dry-run` | Preview the Schema migration of user-owned assets without writing anything |
+| `migrate --yes` | Run the migration; `schemaVersion` is raised only after every change is written |
 | `models show` | Show the selected profile and resolved tier for every workflow stage |
 | `models configure --profile <name>` | Select `inherit`, `balanced`, or `quality` without changing requirements, designs, or code |
 | `workflow prepare` | Create a local handoff manifest with hashes of formal input documents |

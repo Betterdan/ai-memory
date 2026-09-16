@@ -28,6 +28,8 @@ test('文件所有权区分用户资产、框架文件和混合文件', () => {
 test('Schema migration 注册表提供连续路径并拒绝降级', () => {
   assert.deepEqual(migrationsBetween(0, 1).map(item => item.id), ['bootstrap-schema-v1']);
   assert.deepEqual(migrationsBetween(1, 1), []);
+  assert.deepEqual(migrationsBetween(0, 2).map(item => item.id), ['bootstrap-schema-v1', 'knowledge-layer-v2']);
+  assert.deepEqual(migrationsBetween(1, 2).map(item => item.id), ['knowledge-layer-v2']);
   assert.throws(() => migrationsBetween(2, 1), /项目 Schema 2 高于当前 CLI Schema 1/);
 });
 
@@ -66,13 +68,14 @@ test('项目 Schema 或框架版本高于 CLI 时拒绝降级规划', async (t) 
     frameworkVersion: '0.3.0', schemaVersion: 2, generatedAt: '2026-07-16T00:00:00.000Z',
     tools: [], templateVars: { projectName: 'future', techStack: 'Go', date: '2026-07-16' }, files: {},
   };
+  base.schemaVersion = 3;
   await writeFile(path.join(dir, '.ai', 'ai-memory.json'), JSON.stringify(base));
   await assert.rejects(
     planFrameworkUpdate({ targetDir: dir, templatesRoot: TEMPLATES, frameworkVersion: '0.3.0' }),
-    /项目 Schema 2 高于当前 CLI Schema 1/
+    /项目 Schema 3 高于当前 CLI Schema 2/
   );
 
-  await writeFile(path.join(dir, '.ai', 'ai-memory.json'), JSON.stringify({ ...base, frameworkVersion: '9.0.0', schemaVersion: 1 }));
+  await writeFile(path.join(dir, '.ai', 'ai-memory.json'), JSON.stringify({ ...base, frameworkVersion: '9.0.0', schemaVersion: 2 }));
   await assert.rejects(
     planFrameworkUpdate({ targetDir: dir, templatesRoot: TEMPLATES, frameworkVersion: '0.3.0' }),
     /项目框架版本 9.0.0 高于当前 CLI 0.3.0/
@@ -206,7 +209,12 @@ test('未修改的旧版项目升级时受管区块替换 Superpowers 编排且�
     []
   );
 
+  assert.equal(plan.schemaVersion, 1, 'update 不得提升 schemaVersion');
+  assert.deepEqual(plan.pendingMigrations.map(item => item.id), ['knowledge-layer-v2']);
+
   await applyFrameworkUpdate({ targetDir: dir, templatesRoot: TEMPLATES, plan });
+  const afterUpdate = JSON.parse(await readFile(path.join(dir, '.ai', 'ai-memory.json'), 'utf8'));
+  assert.equal(afterUpdate.schemaVersion, 1, '用户资产迁移未执行前 schema 必须保持不变');
   const upgraded = await readFile(path.join(dir, 'CLAUDE.md'), 'utf8');
   assert.ok(upgraded.includes(userBlock), '用户区块必须原样保留');
   assert.ok(!/superpowers/i.test(upgraded));

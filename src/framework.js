@@ -9,7 +9,7 @@ import { assertNoSymlinkPath, resolveSafeDestination } from './path-safety.js';
 import { render } from './render.js';
 import { ScaffoldError } from './scaffold.js';
 
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 export const METADATA_DEST = '.ai/ai-memory.json';
 
 const USER_PREFIXES = [
@@ -62,7 +62,7 @@ export async function detectInstallation(targetDir) {
 }
 
 export async function writeFrameworkMetadata({
-  targetDir, templatesRoot, frameworkVersion, tools, projectName, techStack, date, previousMetadata,
+  targetDir, templatesRoot, frameworkVersion, tools, projectName, techStack, date, previousMetadata, schemaVersion,
 }) {
   const manifest = await buildManifest(templatesRoot, tools);
   const files = {};
@@ -73,7 +73,7 @@ export async function writeFrameworkMetadata({
 
   const metadata = {
     frameworkVersion,
-    schemaVersion: CURRENT_SCHEMA_VERSION,
+    schemaVersion: schemaVersion ?? previousMetadata?.schemaVersion ?? CURRENT_SCHEMA_VERSION,
     generatedAt: previousMetadata?.generatedAt ?? new Date().toISOString(),
     ...(previousMetadata ? { updatedAt: new Date().toISOString() } : {}),
     tools: [...tools],
@@ -97,7 +97,15 @@ export async function planFrameworkUpdate({ targetDir, templatesRoot, frameworkV
     throw new Error(`项目框架版本 ${installation.metadata.frameworkVersion} 高于当前 CLI ${frameworkVersion},请使用更新版本的 CLI`);
   }
   const fromSchema = installation.kind === 'metadata' ? installation.metadata.schemaVersion : 0;
-  const migrations = migrationsBetween(fromSchema, CURRENT_SCHEMA_VERSION);
+  const allMigrations = migrationsBetween(fromSchema, CURRENT_SCHEMA_VERSION);
+  const migrations = [];
+  let schemaAfterUpdate = fromSchema;
+  for (const migration of allMigrations) {
+    if (migration.kind !== 'metadata') break;
+    migrations.push(migration);
+    schemaAfterUpdate = migration.to;
+  }
+  const pendingMigrations = allMigrations.slice(migrations.length);
   const manifest = await buildManifest(templatesRoot, tools);
   const desiredDests = new Set(manifest.map(({ dest }) => dest));
   const actions = [];
@@ -158,10 +166,11 @@ export async function planFrameworkUpdate({ targetDir, templatesRoot, frameworkV
   return {
     installation,
     frameworkVersion,
-    schemaVersion: CURRENT_SCHEMA_VERSION,
+    schemaVersion: schemaAfterUpdate,
     tools,
     templateVars: vars,
     migrations,
+    pendingMigrations,
     actions,
   };
 }
@@ -240,6 +249,7 @@ export async function applyFrameworkUpdate({ targetDir, templatesRoot, plan }) {
       techStack: vars.techStack,
       date: vars.date,
       previousMetadata,
+      schemaVersion: plan.schemaVersion,
     });
     summary.written.push(METADATA_DEST);
   } catch (err) {

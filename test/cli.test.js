@@ -28,7 +28,7 @@ test('init --yes 全量生成且渲染变量', async () => {
   await access(path.join(dir, 'AGENTS.md'));
   const metadata = JSON.parse(await readFile(path.join(dir, '.ai/ai-memory.json'), 'utf8'));
   assert.equal(metadata.frameworkVersion, PACKAGE_VERSION);
-  assert.equal(metadata.schemaVersion, 1);
+  assert.equal(metadata.schemaVersion, 2);
   assert.deepEqual(metadata.tools, ['claude', 'codex']);
   assert.equal(metadata.templateVars.projectName, 'demo');
   assert.equal(metadata.files['.ai/knowledge/overview.md'].ownership, 'user');
@@ -120,7 +120,7 @@ test('update --dry-run 对元数据项目识别用户修改且不写文件', asy
   const metadataBefore = await readFile(path.join(dir, '.ai', 'ai-memory.json'), 'utf8');
 
   const { stdout } = await run(process.execPath, [CLI, 'update', '--dry-run'], { cwd: dir });
-  assert.ok(stdout.includes(`当前:${PACKAGE_VERSION} / schema 1`));
+  assert.ok(stdout.includes(`当前:${PACKAGE_VERSION} / schema 2`));
   assert.ok(stdout.includes('需要人工审查 1'));
   assert.ok(stdout.includes('.ai/skills/critic.md'));
   assert.ok(stdout.includes('dry-run:未修改任何文件'));
@@ -143,7 +143,9 @@ test('v0.1 legacy 项目只能先 update --dry-run,不能重新 init', async () 
 
   const { stdout } = await run(process.execPath, [CLI, 'update', '--dry-run'], { cwd: dir });
   assert.ok(stdout.includes('v0.1.0 legacy(无元数据)'));
-  assert.ok(stdout.includes('Schema 迁移 1(当前仅规划,不执行)'));
+  assert.ok(stdout.includes('Schema 迁移 1(随本次更新生效)'));
+  assert.ok(stdout.includes('待执行的用户资产迁移 1(update 不碰用户资产)'));
+  assert.ok(stdout.includes('ai-memory migrate --dry-run'));
   assert.equal(await readFile(path.join(dir, '.ai', 'memory', 'session-log.md'), 'utf8'), 'KEEP_MEMORY\n');
   await assert.rejects(access(path.join(dir, '.ai', 'ai-memory.json')));
 
@@ -182,7 +184,7 @@ test('未修改的 v0.1 legacy 项目可安全升级且保留记忆', async () =
   assert.ok((await readFile(path.join(dir, 'docs', 'requirements', 'README.md'), 'utf8')).includes('外部行为契约'));
 
   const metadata = JSON.parse(await readFile(path.join(dir, '.ai', 'ai-memory.json'), 'utf8'));
-  assert.equal(metadata.schemaVersion, 1);
+  assert.equal(metadata.schemaVersion, 1, 'update 只做元数据 bootstrap,知识层迁移留给 migrate');
   assert.equal(metadata.templateVars.projectName, 'legacy-demo');
 });
 
@@ -261,4 +263,18 @@ test('update 只替换 AGENTS.md 受管区块并保留用户内容', async () =>
   assert.ok(!result.includes('BROKEN_MANAGED'));
   assert.ok(result.includes('进场先读 `.ai/README.md`'));
   assert.ok(result.includes('USER_CUSTOM_COMMAND=npm test'));
+});
+
+test('migrate 命令在全新项目上报告无待执行迁移', async () => {
+  const dir = await temp('aim-cli-migrate-');
+  await run(process.execPath, [CLI, 'init', '--name', 'demo', '--stack', 'Go', '--tools', '', '--yes'], { cwd: dir });
+
+  const { stdout } = await run(process.execPath, [CLI, 'migrate', '--dry-run'], { cwd: dir });
+  assert.ok(stdout.includes('当前 Schema:2 → 目标:2'));
+  assert.ok(stdout.includes('没有待执行的迁移'));
+
+  await assert.rejects(
+    run(process.execPath, [CLI, 'migrate'], { cwd: dir }),
+    /必须且只能指定 --dry-run 或 --yes/
+  );
 });
