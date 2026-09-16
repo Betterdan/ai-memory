@@ -11,7 +11,7 @@
 
 1. 确认版本目录 `docs/requirements/vX.Y.Z/`，不存在则创建 `draft/` 与 `final/`。
 2. 在 `draft/<集合名>.md` 记录：背景 / 想要什么 / 不确定的点。不要求用户自己拆分。
-3. 在 `project-state.md` 需求进度表登记状态 `draft`。
+3. 在 `.ai/knowledge/iterations.md` 需求点表登记状态 `draft`。
 
 ## 拆分判断（讨论阶段）
 
@@ -29,7 +29,7 @@
 
 ## 定稿
 
-**一次只完整定稿一个需求点。** 确认拆分后定稿第一个点，其余点在 `project-state.md` 以 `planned` 登记并写明顺序与依赖；等前面的点落地后再定稿下一个，避免基于未实现的假设写验收标准。
+**一次只完整定稿一个需求点。** 确认拆分后定稿第一个点，其余点在 `.ai/knowledge/iterations.md` 以 `planned` 登记并写明顺序与依赖；等前面的点落地后再定稿下一个，避免基于未实现的假设写验收标准。
 
 1. 读取需求集合、相关功能记忆和已有外部契约。
 2. 只澄清会改变目标、范围、用户可见行为或验收结果的问题；实现选择留给技术设计。
@@ -43,7 +43,7 @@
 4. 先按 `.ai/skills/risk-levels.md` 给出初步风险等级：S 级不做自检；M/L 级按 `.ai/skills/critic.md` 审查需求完整性（工具支持时使用独立 critic），逐条处理后继续。
 5. 按下方路由选择下一步，不在本流程中比较实现方案。
 6. 逐条核对下方就绪标准，全部满足才写 `final/<集合名>-<点名>.md`。
-7. 更新 `project-state.md` 为 `finalized`；在 `features/<点名>.md` 记录外部契约与关键决策，并更新 MEMORY 索引。
+7. 更新 `.ai/knowledge/iterations.md` 为 `finalized`；外部契约与关键决策按 `.ai/skills/knowledge-structure.md` 判断归属后写入当前知识。
 
 若 `.ai/config/model-routing.json` 的 profile 不是 `inherit`，M/L 级定稿前按 `.ai/skills/model-routing.md` 为 `requirement-finalize` 准备并校验 handoff，再使用对应等级执行者；S 级不创建 handoff。模型路由不得改变下方 S/M/L 流程深度。
 

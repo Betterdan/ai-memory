@@ -21,9 +21,9 @@ test('init --yes 全量生成且渲染变量', async () => {
   const dir = await temp('aim-cli-');
   const { stdout } = await run(process.execPath, [CLI, 'init', '--name', 'demo', '--stack', 'Go', '--tools', 'claude,codex', '--yes'], { cwd: dir });
   assert.ok(stdout.includes('agent 读 .ai/README.md'));
-  const state = await readFile(path.join(dir, '.ai/memory/project-state.md'), 'utf8');
-  assert.ok(state.includes('- 项目:demo'));
-  assert.ok(state.includes('- 技术栈:Go'));
+  const overview = await readFile(path.join(dir, '.ai/knowledge/overview.md'), 'utf8');
+  assert.ok(overview.includes('- 项目:demo'));
+  assert.ok(overview.includes('- 技术栈:Go'));
   await access(path.join(dir, 'CLAUDE.md'));
   await access(path.join(dir, 'AGENTS.md'));
   const metadata = JSON.parse(await readFile(path.join(dir, '.ai/ai-memory.json'), 'utf8'));
@@ -31,7 +31,8 @@ test('init --yes 全量生成且渲染变量', async () => {
   assert.equal(metadata.schemaVersion, 1);
   assert.deepEqual(metadata.tools, ['claude', 'codex']);
   assert.equal(metadata.templateVars.projectName, 'demo');
-  assert.equal(metadata.files['.ai/memory/project-state.md'].ownership, 'user');
+  assert.equal(metadata.files['.ai/knowledge/overview.md'].ownership, 'user');
+  assert.equal(metadata.files['.ai/memory/session-log.md'].ownership, 'user');
   assert.equal(metadata.files['.ai/config/model-routing.json'].ownership, 'user');
   assert.equal(metadata.files['.ai/skills/critic.md'].ownership, 'framework');
   assert.equal(metadata.files['AGENTS.md'].ownership, 'mixed');

@@ -14,6 +14,8 @@ const TEMPLATES = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 
 test('文件所有权区分用户资产、框架文件和混合文件', () => {
   assert.equal(ownershipFor('.ai/config/model-routing.json'), 'user');
   assert.equal(ownershipFor('.ai/memory/session-log.md'), 'user');
+  assert.equal(ownershipFor('.ai/knowledge/overview.md'), 'user');
+  assert.equal(ownershipFor('.ai/knowledge/entries/api.md'), 'user');
   assert.equal(ownershipFor('docs/requirements/v1.0.0/final/a.md'), 'user');
   assert.equal(ownershipFor('docs/architecture/data-model.md'), 'user');
   assert.equal(ownershipFor('.ai/skills/critic.md'), 'framework');
@@ -45,7 +47,9 @@ test('无元数据的 v0.1 项目被识别为 legacy 并保守规划', async (t)
 
   const plan = await planFrameworkUpdate({ targetDir: dir, templatesRoot: TEMPLATES, frameworkVersion: '0.3.0' });
   assert.ok(plan.actions.some(item => item.dest === '.ai/skills/critic.md' && item.action === 'review'));
-  assert.ok(plan.actions.some(item => item.dest === '.ai/memory/project-state.md' && item.action === 'preserve'));
+  assert.ok(!plan.actions.some(item => item.dest === '.ai/memory/project-state.md'), 'project-state 已移出模板,不应出现在升级计划中');
+  const legacyState = await readFile(path.join(dir, '.ai', 'memory', 'project-state.md'), 'utf8');
+  assert.ok(legacyState.includes('- 项目:legacy-demo'), 'legacy 用户资产必须原样保留');
   assert.ok(plan.actions.some(item => item.dest === '.ai/skills/project-inception.md' && item.action === 'add'));
   assert.deepEqual(
     plan.migrations.map(({ id, from, to, automatic }) => ({ id, from, to, automatic })),
@@ -189,6 +193,8 @@ test('未修改的旧版项目升级时受管区块替换 Superpowers 编排且�
   assert.equal(actionOf('.ai/skills/risk-levels.md'), 'add');
   assert.equal(actionOf('.ai/skills/interface-contract.md'), 'add');
   assert.equal(actionOf('docs/architecture/interfaces.md'), 'add');
+  assert.equal(actionOf('.ai/knowledge/overview.md'), 'add');
+  assert.equal(actionOf('.ai/skills/knowledge-structure.md'), 'add');
   assert.deepEqual(
     plan.actions.filter(item => ['merge', 'review', 'review-remove'].includes(item.action)).map(item => item.dest),
     []

@@ -12,7 +12,7 @@
 
 ## 工作流
 
-1. 读取项目目标、现有代码/文档、`.ai/memory/project-state.md` 与 `.ai/skills/architecture.md` 的语言无关边界原则。
+1. 读取项目目标、现有代码/文档、`.ai/knowledge/overview.md` 与 `.ai/skills/architecture.md` 的语言无关边界原则。
 2. 判断是 0→1、新增基线还是重大重构；不适用则停止并转入需求或功能设计流程。
 3. 只询问会改变架构方向的阻塞信息；非阻塞信息采用保守假设并明确标记。
 4. 按 `docs/architecture/` 的五份模板建立或增量更新工程基线：
@@ -22,7 +22,7 @@
    - `deployment.md`：环境、拓扑、配置、发布、迁移、回滚和运行保障。
    - `interfaces.md`：对外入口形态、契约格式与位置、产生方向、校验命令。已有项目盘点现状得出；0→1 项目在第一个需求点实现前确定；只有技术栈或契约方式变化时才重新盘点。
 5. 检查五份文档之间是否矛盾；高风险或生产级项目按 `.ai/skills/critic.md` 做一次聚焦审查。
-6. 将确定的技术栈、部署基线和关键风险更新到 `project-state.md`，并在 session-log 记录节点。
+6. 将确定的技术栈、部署基线和关键风险更新到 `.ai/knowledge/overview.md`，并在 session-log 记录节点。
 
 ## 完成门槛
 

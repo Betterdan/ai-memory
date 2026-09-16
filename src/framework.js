@@ -14,6 +14,7 @@ export const METADATA_DEST = '.ai/ai-memory.json';
 
 const USER_PREFIXES = [
   '.ai/config/',
+  '.ai/knowledge/',
   '.ai/memory/',
   'docs/architecture/',
   'docs/requirements/v',

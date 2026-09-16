@@ -135,13 +135,19 @@ v0.7.0 改变的是发布验证，不修改项目所有的工作流数据。正�
 ├── ai-memory.json            # 版本、Schema、工具、所有权和生成基线哈希
 ├── config/
 │   └── model-routing.json    # inherit/balanced/quality 阶段路由;属于用户配置
+├── knowledge/                # 当前知识:系统现在是什么样
+│   ├── overview.md           # 目标、技术栈、当前迭代、遗留问题
+│   ├── entries/              # 对外入口页(主视图)
+│   ├── domains/              # 业务领域页(横向视图)
+│   ├── decisions/            # 决策记录,标注生效或已取代
+│   ├── iterations.md         # 需求集合、需求点状态与顺序
+│   └── conventions.md        # 开发约定
 ├── memory/
 │   ├── MEMORY.md             # 核心/按需记忆加载索引
-│   ├── project-state.md      # 技术栈、当前版本、需求进度
 │   ├── session-log.md        # 进展与下一步的流水日志
 │   ├── user-profile.md       # 背景、偏好、沟通方式
 │   ├── feedback.md           # 从反馈提炼的行为规范
-│   └── features/             # 功能档案
+│   └── features/             # 过渡期遗留,内容将迁入 knowledge/
 ├── runs/                     # 本地交接与阶段回执;默认不进入 Git
 └── skills/                   # 方法论:requirements-flow、architecture、
                               # feature-design、model-routing、delivery-readiness 等

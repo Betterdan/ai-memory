@@ -135,13 +135,19 @@ v0.7.0 changes release validation rather than project-owned workflow data. Norma
 ├── ai-memory.json            # version, schema, tools, ownership, baseline hashes
 ├── config/
 │   └── model-routing.json    # inherit/balanced/quality stage routing; user-owned
+├── knowledge/                # current knowledge: what the system looks like now
+│   ├── overview.md           # goals, stack, current iteration, known issues
+│   ├── entries/              # external entry-point pages (primary view)
+│   ├── domains/              # business domain pages (cross-cutting view)
+│   ├── decisions/            # decision records, marked active or superseded
+│   ├── iterations.md         # requirement sets, points, status and order
+│   └── conventions.md        # project development conventions
 ├── memory/
 │   ├── MEMORY.md             # core/on-demand memory loading index
-│   ├── project-state.md      # stack, current version, requirement progress
 │   ├── session-log.md        # rolling log of progress & next steps
 │   ├── user-profile.md       # background, preferences, communication style
 │   ├── feedback.md           # behavioral norms distilled from feedback
-│   └── features/             # per-feature dossiers
+│   └── features/             # transitional; contents migrate into knowledge/
 ├── runs/                     # local handoffs and stage receipts; ignored by Git
 └── skills/                   # methodology: requirements-flow, architecture,
                               # feature-design, model-routing, delivery-readiness, etc.

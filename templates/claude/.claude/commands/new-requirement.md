@@ -1,5 +1,5 @@
 ---
-description: 新建需求 draft 骨架并在 project-state 登记
+description: 新建需求集合 draft 骨架并在迭代记录登记
 argument-hint: <需求集合名> [版本,默认当前迭代]
 ---
 

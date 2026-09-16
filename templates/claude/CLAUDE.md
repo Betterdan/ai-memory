@@ -12,6 +12,7 @@
 - 需求 what/why 与外部行为定稿 → requirements-flow skill;draft/ 是需求集合,final/ 按需求点逐个定稿,一次只定稿一个点
 - M/L 级功能 how 与技术接口 → feature-design skill,产物在 `docs/design/vX.Y.Z/`;S 级可直接实现
 - 交付前 → delivery-readiness skill,按风险验证契约、测试、迁移、回滚、性能与可观测性
+- 当前知识 → `.ai/knowledge/`;写入前按 `.ai/skills/knowledge-structure.md` 判断归属,每条知识只有一个归属
 - 记忆更新 → 只在可验收工程节点、关键决策、状态变化或会话切换时写;手动 /update-memory
 - 反驳检查 → S 级不做自检,直接实现并测试;M/L 级或用户明确要求时用 /critic 独立审查
 - 模型路由 → 读取 `.ai/config/model-routing.json`;非 inherit 时 M/L 级按 model-routing skill 创建/验证 handoff，再调用匹配的 planner/implementer/test-worker/reviewer

@@ -5,7 +5,7 @@
 
 ## 进场协议(每次会话开始)
 
-1. 读 `memory/MEMORY.md`,再依次加载 `user-profile.md` 当前画像、`feedback.md` 当前规则、`project-state.md` 活跃区段与 `session-log.md` 最新条目；历史归档只在追溯时读取。
+1. 读 `memory/MEMORY.md`,再依次加载 `memory/user-profile.md` 当前画像、`memory/feedback.md` 当前规则、`knowledge/overview.md` 项目概览、`knowledge/iterations.md` 进行中的需求点与 `memory/session-log.md` 最新条目；历史归档只在追溯时读取。
 2. 先用核心记忆校准沟通方式、用户长期约束、项目现状和上次进度；文件为空时直接继续，不臆测补全。
 3. 按任务路由只加载当前需要的方法论和正式产物，禁止一次性读取整个 `.ai/` 与 `docs/`。
 4. 跨模型阶段先按 `skills/model-routing.md` 创建并校验 handoff，不用对话摘要替代正式输入。
@@ -18,6 +18,8 @@
 |---|---|
 | 判断风险等级、确认是否算完成 | `skills/risk-levels.md`(各等级流程深度与退出条件的单一事实源) |
 | 改动对外接口 | `skills/interface-contract.md` + `docs/architecture/interfaces.md` |
+| 了解系统现状 | `knowledge/overview.md` + 相关 `knowledge/entries/`、`knowledge/domains/` |
+| 写入知识 | `skills/knowledge-structure.md` 判断归属,再写对应页面 |
 | 0→1、首次基线、重大重构 | `skills/project-inception.md` + 现有 `docs/architecture/` |
 | 新建需求集合 / 定稿需求点 | `skills/requirements-flow.md` + 相关 feature 记忆与需求文档 |
 | M/L 功能 how | `skills/feature-design.md` + final 需求、相关架构基线与 feature 记忆 |
@@ -30,9 +32,10 @@
 
 - `ai-memory.json` — 框架版本、Schema、启用工具、文件所有权与生成基线哈希;供安全升级预检使用
 - `config/model-routing.json` — 可选阶段模型策略;默认 `inherit` 不改变旧行为
-- `memory/` — 记忆层:MEMORY.md 索引、project-state 全景、session-log 流水、user-profile/feedback 用户级记忆、features/ 功能档案
+- `knowledge/` — 当前知识:overview 概览、entries/ 入口页、domains/ 领域页、decisions/ 决策记录、iterations 迭代记录、conventions 开发约定
+- `memory/` — 过程记录与用户级记忆:MEMORY.md 索引、session-log 流水、user-profile/feedback;features/ 为过渡期遗留目录
 - `runs/` — 本地交接清单和阶段回执;默认不进入 Git
-- `skills/` — 方法论层:risk-levels、interface-contract、project-inception、requirements-flow、feature-design、delivery-readiness、model-routing、code-review、critic、memory-update
+- `skills/` — 方法论层:risk-levels、interface-contract、knowledge-structure、project-inception、requirements-flow、feature-design、delivery-readiness、model-routing、code-review、critic、memory-update
 
 ## 与工具专属配置的关系
 

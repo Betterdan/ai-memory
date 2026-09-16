@@ -21,7 +21,7 @@ S 级改动按 `.ai/skills/risk-levels.md` 的退出条件判断：只有项目�
 | 用户明确表达的稳定背景、沟通/决策偏好、跨项目约束 | `user-profile.md` 对应字段 |
 | 用户明确纠正且可跨项目复用的 Agent 行为规则 | `feedback.md` 去重后新增或替换 |
 | 工程节点、当前进度、下一步、阻塞 | `session-log.md` 追加 |
-| 需求、设计、里程碑或交付状态 | `project-state.md` 对应行 |
+| 需求点、设计或交付状态 | `.ai/knowledge/iterations.md` 对应行 |
 | 稳定功能决策与契约变化摘要 | `features/<名>.md` |
 | 新增记忆文件 | `MEMORY.md` 加索引 |
 
@@ -37,5 +37,5 @@ S 级改动按 `.ai/skills/risk-levels.md` 的退出条件判断：只有项目�
 
 - 写前读取目标文件，只记录增量和新事实，不复制需求/设计/测试输出。
 - 将同一工程节点内的相关小步骤合并为一条，避免流水噪声。
-- session-log 超约 200 行时，把旧条目压缩进 project-state 归档章节。
+- session-log 超约 200 行时，把旧条目压缩进 `.ai/knowledge/iterations.md` 的「已归档」。
 - 跨工具切换前确认关键状态已落盘；记忆变更随对应代码或文档一起 commit。

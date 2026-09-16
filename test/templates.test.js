@@ -18,10 +18,16 @@ const VARS = {
 
 export const EXPECTED_COMMON = [
   '.ai/config/model-routing.json',
+  '.ai/knowledge/README.md',
+  '.ai/knowledge/conventions.md',
+  '.ai/knowledge/decisions/README.md',
+  '.ai/knowledge/domains/README.md',
+  '.ai/knowledge/entries/README.md',
+  '.ai/knowledge/iterations.md',
+  '.ai/knowledge/overview.md',
   '.ai/memory/MEMORY.md',
   '.ai/memory/features/.gitkeep',
   '.ai/memory/feedback.md',
-  '.ai/memory/project-state.md',
   '.ai/memory/session-log.md',
   '.ai/memory/user-profile.md',
   '.ai/README.md',
@@ -32,6 +38,7 @@ export const EXPECTED_COMMON = [
   '.ai/skills/delivery-readiness.md',
   '.ai/skills/feature-design.md',
   '.ai/skills/interface-contract.md',
+  '.ai/skills/knowledge-structure.md',
   '.ai/skills/memory-update.md',
   '.ai/skills/model-routing.md',
   '.ai/skills/project-inception.md',
@@ -108,9 +115,9 @@ test('scaffold 真实模板:渲染后无残留 {{ 且变量已替换', async () 
     const body = await readFile(path.join(dir, ...dest.split('/')), 'utf8');
     assert.ok(!body.includes('{{'), `${dest} 有未渲染变量`);
   }
-  const state = await readFile(path.join(dir, '.ai/memory/project-state.md'), 'utf8');
-  assert.ok(state.includes('- 项目:demo'));
-  assert.ok(state.includes('- 技术栈:PHP + Vue'));
+  const overview = await readFile(path.join(dir, '.ai/knowledge/overview.md'), 'utf8');
+  assert.ok(overview.includes('- 项目:demo'));
+  assert.ok(overview.includes('- 技术栈:PHP + Vue'));
 });
 
 test('新增工程 skills 适配层保持薄包装且架构基线可渲染', async () => {
@@ -169,7 +176,7 @@ test('全部核心记忆具备进场加载与写入闭环,架构方法论有按�
   const index = await readFile(path.join(ROOT, 'common', '.ai', 'memory', 'MEMORY.md'), 'utf8');
   const profile = await readFile(path.join(ROOT, 'common', '.ai', 'memory', 'user-profile.md'), 'utf8');
   const feedback = await readFile(path.join(ROOT, 'common', '.ai', 'memory', 'feedback.md'), 'utf8');
-  for (const file of ['user-profile.md', 'feedback.md', 'project-state.md', 'session-log.md']) {
+  for (const file of ['user-profile.md', 'feedback.md', 'session-log.md', 'overview.md', 'iterations.md']) {
     assert.ok(protocol.includes(file), `进场协议必须加载 ${file}`);
     assert.ok(index.includes(file), `记忆索引必须登记 ${file}`);
   }
@@ -394,9 +401,9 @@ test('需求目录、进度表与适配层按需求点表述', async () => {
   assert.ok(readme.includes('`final/<集合名>-<点名>.md`'));
   assert.ok(readme.includes('需求集合'));
 
-  const state = await readFile(path.join(ROOT, 'common', '.ai', 'memory', 'project-state.md'), 'utf8');
-  assert.ok(state.includes('| 版本 | 需求点 | 风险 | 状态 | 备注(依赖与顺序) |'));
-  assert.ok(state.includes('planned(已拆分待定稿)'));
+  const iterations = await readFile(path.join(ROOT, 'common', '.ai', 'knowledge', 'iterations.md'), 'utf8');
+  assert.ok(iterations.includes('| 版本 | 需求点 | 风险 | 状态 | 依赖与顺序 |'));
+  assert.ok(iterations.includes('planned(已拆分待定稿)'));
 
   const finalize = await readFile(path.join(ROOT, 'claude', '.claude', 'commands', 'finalize-requirement.md'), 'utf8');
   assert.ok(finalize.includes('拆分判断'));
@@ -473,5 +480,74 @@ test('对外接口契约是跨等级硬门槛', async () => {
     const rel = path.relative(ROOT, file).split(path.sep).join('/');
     const body = await readFile(file, 'utf8');
     assert.ok(!body.includes('四份'), `${rel} 仍写着四份基线`);
+  }
+});
+
+test('当前知识层建立入口/领域结构与归属规则', async () => {
+  const k = path.join(ROOT, 'common', '.ai', 'knowledge');
+  const rules = await readFile(path.join(ROOT, 'common', '.ai', 'skills', 'knowledge-structure.md'), 'utf8');
+
+  for (const row of [
+    '只在某个入口体现的行为',
+    '多个入口共用的业务规则',
+    '无对外入口的后端行为',
+    '实体、数据归属、状态流转',
+    '接口形状',
+  ]) {
+    assert.ok(rules.includes(row), `归属表缺少: ${row}`);
+  }
+  assert.ok(rules.includes('每条知识只有一个归属'));
+  assert.ok(rules.includes('只放链接,不复制内容'));
+
+  assert.ok(rules.includes('## 提升规则'));
+  assert.ok(rules.includes('第二个入口也用到同一规则时'));
+  assert.ok(rules.includes('改为链接'));
+
+  assert.ok(rules.includes('契约描述形状,入口页描述语义'));
+  for (const semantic of ['业务规则', '错误含义', '副作用', '幂等性', '调用顺序']) {
+    assert.ok(rules.includes(semantic), `语义定义缺少: ${semantic}`);
+  }
+
+  const entries = await readFile(path.join(k, 'entries', 'README.md'), 'utf8');
+  assert.ok(entries.includes('每个入口分组一页'));
+  assert.ok(entries.includes('不要一个接口一页'), '入口页粒度必须是分组');
+  assert.ok(entries.includes('docs/architecture/interfaces.md'));
+
+  const domains = await readFile(path.join(k, 'domains', 'README.md'), 'utf8');
+  assert.ok(domains.includes('提升规则'));
+  assert.ok(domains.includes('由脚本生成'));
+  assert.ok(domains.includes('不要手工总结'), '横向视图不得由 AI 手工总结');
+
+  const decisions = await readFile(path.join(k, 'decisions', 'README.md'), 'utf8');
+  assert.ok(decisions.includes('已取代'));
+});
+
+test('记忆层收敛为过程记录,当前状态一律进 knowledge', async () => {
+  const index = await readFile(path.join(ROOT, 'common', '.ai', 'memory', 'MEMORY.md'), 'utf8');
+  for (const kind of ['当前知识', '过程记录', '用户级记忆']) {
+    assert.ok(index.includes(kind), `记忆索引缺少分类: ${kind}`);
+  }
+  assert.ok(index.includes('knowledge-structure.md'));
+  assert.ok(index.includes('禁止一次性加载整个目录'));
+
+  const log = await readFile(path.join(ROOT, 'common', '.ai', 'memory', 'session-log.md'), 'utf8');
+  assert.ok(log.includes('只记过程'));
+  assert.ok(log.includes('不在本文件重复'));
+  assert.ok(log.includes('iterations.md'), '归档去向必须指向迭代记录');
+
+  const protocol = await readFile(path.join(ROOT, 'common', '.ai', 'README.md'), 'utf8');
+  assert.ok(protocol.includes('knowledge/overview.md'));
+  assert.ok(protocol.includes('knowledge/iterations.md'));
+  assert.ok(/\| 写入知识 \|.*knowledge-structure\.md/.test(protocol));
+
+  for (const entry of ['claude/CLAUDE.md', 'codex/AGENTS.md']) {
+    const body = await readFile(path.join(ROOT, ...entry.split('/')), 'utf8');
+    assert.ok(body.includes('knowledge-structure.md'));
+  }
+
+  for (const file of await collectFiles(ROOT)) {
+    const rel = path.relative(ROOT, file).split(path.sep).join('/');
+    const body = await readFile(file, 'utf8');
+    assert.ok(!body.includes('project-state'), `${rel} 仍引用已删除的 project-state`);
   }
 });
