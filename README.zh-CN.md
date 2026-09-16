@@ -150,7 +150,8 @@ docs/architecture/            # 0→1 项目工程基线
 ├── system-context.md         # 系统边界、参与者、模块和关键流程
 ├── data-model.md             # 实体、关系、所有权、一致性和迁移
 ├── quality-attributes.md     # 性能、可观测性、扩展性、可靠性等
-└── deployment.md             # 部署拓扑、发布、回滚和运行保障
+├── deployment.md             # 部署拓扑、发布、回滚和运行保障
+└── interfaces.md             # 对外入口形态、契约格式与验证约定
 
 docs/requirements/vX.Y.Z/
 ├── draft/                    # 人工书写的粗稿需求

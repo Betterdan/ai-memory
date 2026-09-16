@@ -31,6 +31,7 @@ export const EXPECTED_COMMON = [
   '.ai/skills/critic.md',
   '.ai/skills/delivery-readiness.md',
   '.ai/skills/feature-design.md',
+  '.ai/skills/interface-contract.md',
   '.ai/skills/memory-update.md',
   '.ai/skills/model-routing.md',
   '.ai/skills/project-inception.md',
@@ -38,6 +39,7 @@ export const EXPECTED_COMMON = [
   '.ai/skills/risk-levels.md',
   'docs/architecture/data-model.md',
   'docs/architecture/deployment.md',
+  'docs/architecture/interfaces.md',
   'docs/architecture/quality-attributes.md',
   'docs/architecture/system-context.md',
   'docs/design/README.md',
@@ -410,5 +412,66 @@ test('需求目录、进度表与适配层按需求点表述', async () => {
     if (body.includes('draft') && body.includes('final')) {
       assert.ok(body.includes('需求点'), `${rel} 描述了 draft→final 却未按需求点表述`);
     }
+  }
+});
+
+test('对外入口与契约约定写入基线,且不预设项目类型', async () => {
+  const interfaces = await readFile(path.join(ROOT, 'common', 'docs', 'architecture', 'interfaces.md'), 'utf8');
+
+  assert.ok(interfaces.includes('## 对外入口形态'));
+  assert.ok(interfaces.includes('## 契约与验证约定'));
+  for (const form of ['页面 / 视图', 'API 分组', '消息 / 事件', '定时任务', 'CLI 命令', 'SDK / 库公开接口']) {
+    assert.ok(interfaces.includes(form), `缺少入口形态: ${form}`);
+  }
+  assert.ok(interfaces.includes('一个项目可多种并存'));
+  assert.ok(interfaces.includes('未使用的写「不适用」'), '模板必须允许不适用而不是强行套用');
+
+  for (const item of ['契约格式', '契约位置', '产生方向', '校验命令', '调用方如何获取类型或客户端']) {
+    assert.ok(interfaces.includes(item), `缺少契约约定要素: ${item}`);
+  }
+  assert.ok(interfaces.includes('重新盘点触发条件'));
+});
+
+test('对外接口契约是跨等级硬门槛', async () => {
+  const skills = path.join(ROOT, 'common', '.ai', 'skills');
+  const gate = await readFile(path.join(skills, 'interface-contract.md'), 'utf8');
+
+  assert.ok(gate.includes('不论风险等级'));
+  assert.ok(gate.includes('判定边界是**系统边界**'));
+  assert.ok(gate.includes('## 触发门槛') || gate.includes('**触发门槛**'));
+  assert.ok(gate.includes('**不触发**'));
+  assert.ok(gate.includes('模块间接口'), '必须排除模块间接口');
+  assert.ok(gate.includes('版本控制中的文件 diff'));
+  assert.ok(gate.includes('用户已确认该 diff'));
+  assert.ok(gate.includes('docs/architecture/interfaces.md'));
+
+  const levels = await readFile(path.join(skills, 'risk-levels.md'), 'utf8');
+  assert.ok(levels.includes('## 跨等级硬门槛'));
+  assert.ok(levels.includes('interface-contract.md'));
+  assert.ok(levels.includes('S 级不豁免上方的跨等级硬门槛'), 'S 级必须显式说明不豁免');
+
+  for (const file of ['requirements-flow.md', 'feature-design.md', 'code-review.md', 'delivery-readiness.md']) {
+    const body = await readFile(path.join(skills, file), 'utf8');
+    assert.ok(body.includes('interface-contract.md'), `${file} 必须接入契约门槛`);
+  }
+
+  const inception = await readFile(path.join(skills, 'project-inception.md'), 'utf8');
+  assert.ok(inception.includes('五份模板'));
+  assert.ok(inception.includes('`interfaces.md`'));
+  assert.ok(inception.includes('只有技术栈或契约方式变化时才重新盘点'));
+
+  const protocol = await readFile(path.join(ROOT, 'common', '.ai', 'README.md'), 'utf8');
+  assert.ok(/\| 改动对外接口 \|.*interface-contract\.md/.test(protocol));
+
+  for (const entry of ['claude/CLAUDE.md', 'codex/AGENTS.md']) {
+    const body = await readFile(path.join(ROOT, ...entry.split('/')), 'utf8');
+    assert.ok(body.includes('interface-contract.md'));
+    assert.ok(body.includes('不分等级'));
+  }
+
+  for (const file of await collectFiles(ROOT)) {
+    const rel = path.relative(ROOT, file).split(path.sep).join('/');
+    const body = await readFile(file, 'utf8');
+    assert.ok(!body.includes('四份'), `${rel} 仍写着四份基线`);
   }
 });

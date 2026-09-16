@@ -150,7 +150,8 @@ docs/architecture/            # engineering baseline for 0-to-1 projects
 ├── system-context.md         # boundaries, actors, modules, and key flows
 ├── data-model.md             # entities, ownership, consistency, and migration
 ├── quality-attributes.md     # performance, observability, scalability, reliability
-└── deployment.md             # topology, releases, rollback, and operations
+├── deployment.md             # topology, releases, rollback, and operations
+└── interfaces.md             # external entry points, contract format, and verification
 
 docs/requirements/vX.Y.Z/
 ├── draft/                    # human-written rough requirements

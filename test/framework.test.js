@@ -187,6 +187,8 @@ test('未修改的旧版项目升级时受管区块替换 Superpowers 编排且�
   assert.equal(actionOf('.claude/skills/code-review/SKILL.md'), 'add');
   assert.equal(actionOf('.ai/skills/code-review.md'), 'add');
   assert.equal(actionOf('.ai/skills/risk-levels.md'), 'add');
+  assert.equal(actionOf('.ai/skills/interface-contract.md'), 'add');
+  assert.equal(actionOf('docs/architecture/interfaces.md'), 'add');
   assert.deepEqual(
     plan.actions.filter(item => ['merge', 'review', 'review-remove'].includes(item.action)).map(item => item.dest),
     []

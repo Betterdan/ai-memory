@@ -7,6 +7,7 @@
 本 managed 区块由 ai-memory 更新;项目命令和自定义规则只写到下方 user 区块。
 
 - 风险等级与退出条件 → `.ai/skills/risk-levels.md`;S 级走轻量路径,不建 handoff、不写交付报告
+- 对外接口变更 → 不分等级,先按 `.ai/skills/interface-contract.md` 更新契约并确认 diff 再实现
 - 0→1 项目/首次架构基线/重大重构 → project-inception skill,产物在 `docs/architecture/`;普通功能不要重复触发
 - 需求 what/why 与外部行为定稿 → requirements-flow skill;draft/ 是需求集合,final/ 按需求点逐个定稿,一次只定稿一个点
 - M/L 级功能 how 与技术接口 → feature-design skill,产物在 `docs/design/vX.Y.Z/`;S 级可直接实现
