@@ -18,6 +18,7 @@ const VARS = {
 
 export const EXPECTED_COMMON = [
   '.ai/config/model-routing.json',
+  '.ai/hooks/pre-commit.sample',
   '.ai/knowledge/README.md',
   '.ai/knowledge/conventions.md',
   '.ai/knowledge/decisions/README.md',

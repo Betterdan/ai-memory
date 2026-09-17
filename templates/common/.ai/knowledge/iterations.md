@@ -7,6 +7,7 @@
 
 > 状态:planned(已拆分待定稿) / draft / finalized / designed / in-progress / done
 > 同一需求集合的点靠命名前缀归组。
+> 「需求点」列填 `final/` 下的文件名(不含 .md),`ai-memory gate ready` 据此定位定稿。
 
 | 版本 | 需求点 | 风险 | 状态 | 依赖与顺序 |
 |---|---|---|---|---|

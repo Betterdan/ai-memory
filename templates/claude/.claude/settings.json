@@ -1,5 +1,16 @@
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx --no-install ai-memory gate ready --hook"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

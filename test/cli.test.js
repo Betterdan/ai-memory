@@ -295,3 +295,36 @@ test('kb check 用退出码区分通过与失败', async () => {
   assert.ok(failure.stdout.includes('frontmatter 1'));
   assert.ok(failure.stdout.includes('共 1 个问题'));
 });
+
+test('gate ready 的退出码:普通模式 1,hook 模式 2,坏输入放行', async () => {
+  const dir = await temp('aim-cli-gate-');
+  await run(process.execPath, [CLI, 'init', '--name', 'demo', '--stack', 'Go', '--tools', '', '--yes'], { cwd: dir });
+
+  const idle = await run(process.execPath, [CLI, 'gate', 'ready'], { cwd: dir });
+  assert.ok(idle.stdout.includes('没有进行中的需求点'));
+
+  const iterations = path.join(dir, '.ai', 'knowledge', 'iterations.md');
+  const body = await readFile(iterations, 'utf8');
+  await writeFile(iterations, body.replace(
+    '|---|---|---|---|---|',
+    '|---|---|---|---|---|\n| v1.0.0 | 导出 | M | in-progress | 无 |'
+  ));
+
+  const manual = await run(process.execPath, [CLI, 'gate', 'ready'], { cwd: dir }).then(
+    () => { throw new Error('未就绪时普通模式必须非 0 退出'); },
+    err => err
+  );
+  assert.equal(manual.code, 1);
+  assert.ok(manual.stdout.includes('找不到定稿'));
+
+  const hooked = await run(process.execPath, [CLI, 'gate', 'ready', '--hook'], { cwd: dir }).then(
+    () => { throw new Error('未就绪时 hook 模式必须以 2 阻塞'); },
+    err => err
+  );
+  assert.equal(hooked.code, 2, 'hook 模式必须用退出码 2 才能阻塞工具调用');
+
+  const pending = run(process.execPath, [CLI, 'gate', 'ready', '--hook'], { cwd: dir });
+  pending.child.stdin.end('not json');
+  const malformed = await pending;
+  assert.ok(malformed.stderr.includes('就绪门禁跳过'), '门禁自身出错时必须放行');
+});

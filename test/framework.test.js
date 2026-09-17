@@ -222,3 +222,30 @@ test('未修改的旧版项目升级时受管区块替换 Superpowers 编排且�
   await access(path.join(dir, '.claude', 'skills', 'code-review', 'SKILL.md'));
   assert.equal(await readFile(path.join(dir, '.ai', 'memory', 'features', 'legacy-feature.md'), 'utf8'), 'KEEP_FEATURE_DOSSIER');
 });
+
+test('改过 settings.json 的项目升级时要求人工合并,不静默覆盖', async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-settings-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await mkdir(path.join(dir, '.ai'), { recursive: true });
+  await mkdir(path.join(dir, '.claude'), { recursive: true });
+
+  const customized = '{\n  "hooks": {},\n  "myOwnKey": true\n}\n';
+  await writeFile(path.join(dir, '.claude', 'settings.json'), customized);
+  await writeFile(path.join(dir, '.ai', 'ai-memory.json'), JSON.stringify({
+    frameworkVersion: '0.8.0', schemaVersion: 2, generatedAt: '2026-09-01T00:00:00.000Z',
+    tools: ['claude'], templateVars: { projectName: 'demo', techStack: 'Node', date: '2026-09-01' },
+    files: { '.claude/settings.json': { ownership: 'mixed', sha256: hashContent('{}\n') } },
+  }));
+
+  const plan = await planFrameworkUpdate({ targetDir: dir, templatesRoot: TEMPLATES, frameworkVersion: '0.9.0' });
+  assert.equal(
+    plan.actions.find(item => item.dest === '.claude/settings.json')?.action,
+    'merge',
+    'JSON 混合文件被改过时必须要求人工合并'
+  );
+  await assert.rejects(
+    applyFrameworkUpdate({ targetDir: dir, templatesRoot: TEMPLATES, plan }),
+    /需合并\/审查项/
+  );
+  assert.equal(await readFile(path.join(dir, '.claude', 'settings.json'), 'utf8'), customized);
+});

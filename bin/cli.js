@@ -9,6 +9,7 @@ import {
   resolveModelRouting, writeModelRoutingConfig,
 } from '../src/model-routing.js';
 import { applyMigration, planMigration } from '../src/migrate.js';
+import { gateReady, isHookAllowedPath } from '../src/gate-ready.js';
 import { checkKnowledge } from '../src/knowledge-check.js';
 import { applyKnowledgeBuild, planKnowledgeBuild } from '../src/knowledge-index.js';
 import { ScaffoldError, scaffold } from '../src/scaffold.js';
@@ -295,6 +296,50 @@ kb
     process.exitCode = 1;
   });
 
+const gate = program.command('gate').description('开工前的机械门禁;只查结构,不查内容');
+
+gate
+  .command('ready')
+  .description('检查进行中的需求点定稿是否满足就绪标准;--hook 供 PreToolUse 自动触发')
+  .option('--point <name>', '只检查指定需求点,默认取 iterations.md 中 in-progress 的点')
+  .option('--hook', 'hook 模式:读取 stdin 的工具输入,失败以退出码 2 阻塞')
+  .action(async (opts) => {
+    if (opts.hook) {
+      // hook 模式只允许 0 或 2:门禁自身出问题绝不能卡死项目
+      try {
+        const input = await readStdin();
+        const filePath = input ? JSON.parse(input)?.tool_input?.file_path : undefined;
+        if (isHookAllowedPath(filePath)) return;
+        const { blocked } = await gateReady({ targetDir: process.cwd() });
+        if (!blocked.length) return;
+        console.error('[ai-memory] 需求点尚未就绪,先补齐定稿再开始实现:');
+        for (const item of blocked) {
+          console.error(`  ${item.point}${item.file ? ` (${item.file})` : ''}`);
+          for (const failure of item.failures) console.error(`    - ${failure}`);
+        }
+        process.exitCode = 2;
+      } catch (err) {
+        console.error(`[ai-memory] 就绪门禁跳过:${err.message}`);
+      }
+      return;
+    }
+
+    const { results, blocked } = await gateReady({ targetDir: process.cwd(), point: opts.point });
+    if (!results.length) {
+      console.log('没有进行中的需求点,无需检查');
+      return;
+    }
+    for (const item of results) {
+      if (!item.failures.length) {
+        console.log(`就绪 ${item.point} (${item.file})`);
+        continue;
+      }
+      console.log(`未就绪 ${item.point}${item.file ? ` (${item.file})` : ''}`);
+      for (const failure of item.failures) console.log(`  - ${failure}`);
+    }
+    if (blocked.length) process.exitCode = 1;
+  });
+
 program.parseAsync().catch((e) => {
   if (e.name === 'ExitPromptError') {
     console.log('已取消');
@@ -357,6 +402,20 @@ function printUpdatePlan(plan) {
   }
   console.log('升级计划完成');
   if (process.argv.includes('--dry-run')) console.log('dry-run:未修改任何文件');
+}
+
+function readStdin() {
+  return new Promise((resolve) => {
+    if (process.stdin.isTTY) { resolve(''); return; }
+    let data = '';
+    // 兜底超时必须真的会触发:调用方忘了关 stdin 时,门禁不能把编辑挂住
+    const timer = setTimeout(() => { process.stdin.destroy(); resolve(data.trim()); }, 800);
+    const finish = (value) => { clearTimeout(timer); resolve(value); };
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', chunk => { data += chunk; });
+    process.stdin.on('end', () => finish(data.trim()));
+    process.stdin.on('error', () => finish(''));
+  });
 }
 
 function collect(value, previous) {
