@@ -13,7 +13,7 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'temp
 const tempDirs = createTempDirs();
 afterEach(() => tempDirs.cleanup());
 const VARS = {
-  projectName: 'demo', techStack: 'PHP + Vue', date: '2026-07-06', modelProfile: 'inherit', frameworkVersion: '0.10.0',
+  projectName: 'demo', techStack: 'PHP + Vue', date: '2026-07-06', modelProfile: 'inherit', frameworkVersion: '0.11.0',
 };
 
 export const EXPECTED_COMMON = [

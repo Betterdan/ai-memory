@@ -47,6 +47,15 @@ npx @betterdanlins/ai-memory models configure --profile balanced
 
 ## 版本与兼容性
 
+### v0.11.0 —— 一个文件看清项目全貌与进度
+
+- 新增 `ai-memory kb export`:把知识层、架构基线、需求点定稿与技术设计导出为一个自包含 HTML,双击打开即可——不需要服务器、不需要构建、不需要网络。
+- 首页是状态总览而不是渲染出来的正文:项目信息、按状态分组的需求点(进行中默认展开、已完成折叠)、对外入口/业务领域/架构基线/技术设计/决策的计数,以及决策中生效与已取代各有多少。
+- 引入 `marked`,支持任意 Markdown:GFM 表格、任务列表、删除线、引用块等。页面里的原样 HTML 直接透传而不做净化——这些文件来自你自己的仓库,与源码同等信任。
+- 本地图片内联为 data URI,单张上限 2MB。图片缺失、过大或格式不支持时跳过并给出警告,不会让整次导出失败。
+- Mermaid 图可离线渲染。渲染器固定在 mermaid 11.17.2 并校验 SHA-256,只取一次,缓存在 `AI_MEMORY_CACHE` / `XDG_CACHE_HOME` / `~/.cache/ai-memory`,然后内联进产物。没有图的项目既不会去取它,也不会背上它的体积。
+- 拿不到就降级,而不是报错:`--no-download` 供离线与内网,`--mermaid <路径>` 可指定本地副本。渲染器取不到或哈希不符时,图回退为代码块并打印原因。
+
 ### v0.10.0 —— 会自己运行的门禁
 
 - 新增 `ai-memory gate ready`:对 `iterations.md` 中标为 `in-progress` 的需求点做结构就绪检查——章节齐不齐、验收标准里还有没有 `TBD`、范围有没有写「不做」、契约状态有没有声明、开放问题有没有标注、实现交接有没有风险等级。它只查漏写与含糊,不判断内容对错。
@@ -208,6 +217,25 @@ contract_globs: [docs/api/**]
 
 git 门禁是可选的:`ai-memory hooks install` 启用,`ai-memory hooks status` 查看。已存在的 `pre-commit` 不加 `--force` 绝不覆盖。
 
+### 从 v0.10.0 升级到 v0.11.0
+
+```bash
+npx @betterdanlins/ai-memory@0.11.0 update --dry-run
+npx @betterdanlins/ai-memory@0.11.0 update --yes
+```
+
+不需要迁移,而且与上一版不同,这次没有需要人工合并的 hook 文件:`schemaVersion` 仍为 2,`.claude/settings.json` 不受影响。
+
+然后生成 wiki:
+
+```bash
+npx @betterdanlins/ai-memory@0.11.0 kb export
+```
+
+产物在 `.ai/knowledge.html`。它是生成物:想让别人从仓库里直接打开就提交它,想用时再生成就忽略它——框架不替你决定。
+
+如果页面里有 Mermaid 图,首次导出会下载一次固定版本的渲染器(约 3.4MB)并缓存到全局,之后的导出和其他项目都复用该缓存。机器不能联网时用 `--no-download` 让图回退为代码块,或用 `--mermaid <路径>` 自己提供 bundle。
+
 ## 生成什么
 
 ```
@@ -223,6 +251,8 @@ git 门禁是可选的:`ai-memory hooks install` 启用,`ai-memory hooks status`
 │   ├── decisions/            # 决策记录,标注生效或已取代
 │   ├── iterations.md         # 需求集合、需求点状态与顺序
 │   └── conventions.md        # 开发约定
+├── hooks/
+│   └── pre-commit.sample     # 跨工具 git 门禁样例;ai-memory hooks install
 ├── memory/
 │   ├── MEMORY.md             # 核心/按需记忆加载索引
 │   ├── session-log.md        # 进展与下一步的流水日志

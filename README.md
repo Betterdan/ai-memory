@@ -47,6 +47,15 @@ An initialized project cannot be initialized again. A newer CLI first uses `upda
 
 ## Versions and compatibility
 
+### v0.11.0 — one file that shows what the project is and how far it got
+
+- Adds `ai-memory kb export`: the knowledge layer, the architecture baseline, finalized requirement points and technical designs all render into a single self-contained HTML file. Open it directly — no server, no build step, no network.
+- Its home page is a status overview rather than rendered prose: project facts, requirement points grouped by status (in-progress expanded, done collapsed), counts of entry points, domains, baselines, designs and decisions, and how many decisions are active versus superseded.
+- Adds `marked`, so any Markdown renders — GFM tables, task lists, strikethrough, block quotes. Raw HTML in a page is passed through rather than sanitized: these files come from your own repository and carry the same trust as your source code.
+- Inlines local images as data URIs, capped at 2MB each. An image that is missing, oversized or of an unsupported type is skipped with a warning instead of breaking the export.
+- Renders Mermaid diagrams offline. The renderer is pinned to mermaid 11.17.2 and checked against its SHA-256; it is fetched once, cached under `AI_MEMORY_CACHE` / `XDG_CACHE_HOME` / `~/.cache/ai-memory`, and inlined. A project with no diagrams never fetches it and never carries its weight.
+- Degrades rather than fails: `--no-download` for offline and air-gapped use, `--mermaid <path>` to point at a local copy. When the renderer cannot be obtained or its hash does not match, diagrams fall back to code blocks and the reason is printed.
+
 ### v0.10.0 — gates that run on their own
 
 - Adds `ai-memory gate ready`: a structural readiness check of every requirement point marked `in-progress` — sections present, no `TBD` left in the acceptance criteria, scope states what is out, contract status declared, open questions annotated, risk tier recorded. It checks for omissions and vagueness, never for whether the content is right.
@@ -208,6 +217,25 @@ contract_globs: [docs/api/**]
 
 The git gate is opt-in: run `ai-memory hooks install` to enable it, `ai-memory hooks status` to check. An existing `pre-commit` is never overwritten without `--force`.
 
+### Upgrade from v0.10.0 to v0.11.0
+
+```bash
+npx @betterdanlins/ai-memory@0.11.0 update --dry-run
+npx @betterdanlins/ai-memory@0.11.0 update --yes
+```
+
+No migration, and — unlike the previous release — no hook file to merge: `schemaVersion` stays at 2 and `.claude/settings.json` is untouched.
+
+Then generate the wiki:
+
+```bash
+npx @betterdanlins/ai-memory@0.11.0 kb export
+```
+
+The output lands at `.ai/knowledge.html`. It is a generated artifact: commit it if you want teammates to open it from the repository, ignore it if you would rather regenerate on demand — the framework does not decide for you.
+
+If your pages contain Mermaid diagrams, the first export downloads the pinned renderer once (about 3.4MB) and caches it globally; later exports and other projects reuse that cache. On a machine with no network, pass `--no-download` to fall back to code blocks, or `--mermaid <path>` to supply the bundle yourself.
+
 ## What it generates
 
 ```
@@ -223,6 +251,8 @@ The git gate is opt-in: run `ai-memory hooks install` to enable it, `ai-memory h
 │   ├── decisions/            # decision records, marked active or superseded
 │   ├── iterations.md         # requirement sets, points, status and order
 │   └── conventions.md        # project development conventions
+├── hooks/
+│   └── pre-commit.sample     # tool-neutral git gate; ai-memory hooks install
 ├── memory/
 │   ├── MEMORY.md             # core/on-demand memory loading index
 │   ├── session-log.md        # rolling log of progress & next steps
