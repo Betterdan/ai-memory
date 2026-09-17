@@ -20,6 +20,7 @@
 | 改动对外接口 | `skills/interface-contract.md` + `docs/architecture/interfaces.md` |
 | 开始实现前 | 需求点须标为 `in-progress` 且定稿通过 `ai-memory gate ready` |
 | 改完提交前 | `ai-memory gate contract` 核对契约声明与实际改动是否一致 |
+| 想看项目全貌 | `ai-memory kb export` 生成 `knowledge.html`,双击打开 |
 | 了解系统现状 | `knowledge/overview.md` + 相关 `knowledge/entries/`、`knowledge/domains/` |
 | 写入知识 | `skills/knowledge-structure.md` 判断归属与 frontmatter,写完运行 `ai-memory kb build` 再 `kb check` |
 | 0→1、首次基线、重大重构 | `skills/project-inception.md` + 现有 `docs/architecture/` |
@@ -37,6 +38,7 @@
 - `knowledge/` — 当前知识:overview 概览、entries/ 入口页、domains/ 领域页、decisions/ 决策记录、iterations 迭代记录、conventions 开发约定
 - `memory/` — 过程记录与用户级记忆:MEMORY.md 索引、session-log 流水、user-profile/feedback
 - `hooks/` — 跨工具门禁样例;`ai-memory hooks install` 显式安装,框架不会替你装
+- `knowledge.html` — `kb export` 生成的自包含项目 wiki(含架构基线、需求定稿与技术设计);是生成物,要不要进 Git 由你决定
 - `runs/` — 本地交接清单和阶段回执;默认不进入 Git
 - `skills/` — 方法论层:risk-levels、interface-contract、knowledge-structure、project-inception、requirements-flow、feature-design、delivery-readiness、model-routing、code-review、critic、memory-update
 

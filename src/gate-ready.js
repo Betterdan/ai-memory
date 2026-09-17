@@ -1,5 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { parsePoints } from './iterations.js';
 
 const ITERATIONS = '.ai/knowledge/iterations.md';
 const REQUIREMENTS = 'docs/requirements';
@@ -77,15 +78,7 @@ export function contractDeclaration(body) {
 export async function inProgressPoints(targetDir) {
   const body = await readOptional(path.join(targetDir, ...ITERATIONS.split('/')));
   if (body === undefined) return [];
-  const points = [];
-  for (const line of body.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed.startsWith('|') || trimmed.startsWith('|---')) continue;
-    const cells = trimmed.slice(1, trimmed.endsWith('|') ? -1 : undefined).split('|').map(cell => cell.trim());
-    if (cells.length < 4 || cells[1] === '需求点') continue;
-    if (cells[3] === 'in-progress' && cells[1]) points.push(cells[1]);
-  }
-  return points;
+  return parsePoints(body).filter(point => point.status === 'in-progress').map(point => point.point);
 }
 
 export async function locateFinal(targetDir, point) {

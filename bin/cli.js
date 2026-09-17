@@ -12,6 +12,7 @@ import { applyMigration, planMigration } from '../src/migrate.js';
 import { gateContract } from '../src/gate-contract.js';
 import { gateReady, isHookAllowedPath } from '../src/gate-ready.js';
 import { gitHookStatus, installGitHook } from '../src/git-hooks.js';
+import { DEFAULT_OUT, exportKnowledge } from '../src/knowledge-export.js';
 import { checkKnowledge } from '../src/knowledge-check.js';
 import { applyKnowledgeBuild, planKnowledgeBuild } from '../src/knowledge-index.js';
 import { ScaffoldError, scaffold } from '../src/scaffold.js';
@@ -296,6 +297,17 @@ kb
     }
     console.log(`共 ${result.problems.length} 个问题`);
     process.exitCode = 1;
+  });
+
+kb
+  .command('export')
+  .description('把知识层、架构基线、需求定稿与技术设计导出为一个自包含 HTML')
+  .option('--out <path>', '输出路径', DEFAULT_OUT)
+  .action(async (opts) => {
+    const result = await exportKnowledge({ targetDir: process.cwd(), out: opts.out });
+    console.log(`已导出 ${result.pages.length} 页到 ${result.out}`);
+    for (const warning of result.warnings) console.log(`  提示 ${warning}`);
+    if (!result.pages.length) console.log('  知识层还是空的,打开后按页面提示补第一批内容');
   });
 
 const gate = program.command('gate').description('开工前的机械门禁;只查结构,不查内容');
