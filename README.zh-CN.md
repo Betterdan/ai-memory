@@ -47,6 +47,14 @@ npx @betterdanlins/ai-memory models configure --profile balanced
 
 ## 版本与兼容性
 
+### v0.9.0 —— 知识索引自动生成与适配层去规则化
+
+- 知识页增加 frontmatter(`type`、`group`/`name`、`summary`、`contract`、`domains`,决策页 `status`/`date`),`ai-memory kb build` 据此重新生成 overview 的两张索引,以及每个领域页的关联入口与相关接口。
+- 生成内容放在 `<!-- ai-memory:generated:<名称> -->` 标记之间,刻意区别于 `ai-memory:managed`:`update` 绝不能碰 `.ai/knowledge/`,用不同标记把这件事变成结构约束而不是纪律要求。标记之外的内容永不改写,标记损坏时保守失败。
+- 新增 `ai-memory kb check`,只读校验 frontmatter、知识层内部链接、悬空领域/决策引用与索引是否过期;有问题时退出码为 1,可直接用作提交前或 CI 的门禁。
+- 适配层去规则化。流程规则只存在于 `.ai/`;`.claude/`、`.agents/`、`.codex/` 只保留触发条件、工具原生映射和一句指向。两条守卫保证不再漂移:适配层正文不超过 200 字符(model-routing 两份是纯 agent 名映射,放宽到 400),且不得出现风险等级与流程措辞。
+- `CLAUDE.md` / `AGENTS.md` 的受管区块变成纯路由表——任务对应 skill 与产物位置,不再复述流程。该区块每次会话都加载,是消除重复收益最高的地方。
+
 ### v0.8.0 —— 需求点工作流、知识层与显式迁移
 
 - 移除 Superpowers 依赖。方案比较、实施计划和代码审查收回为自有模板;`code-review` 成为正式 skill,两侧工具都有适配层。
@@ -153,6 +161,19 @@ npx @betterdanlins/ai-memory@0.8.0 migrate --yes
 `migrate` 把 `project-state.md` 并入 `knowledge/overview.md` 与 `knowledge/iterations.md`,原文件归档到 `.ai/memory/archive/`,`.ai/memory/features/` 原地保留并输出待归类清单,由你按 `.ai/skills/knowledge-structure.md` 人工归类。解析不了的内容整块搬进「待整理」区而不是丢弃;你自己改过的目标会被跳过,不会被覆盖。
 
 迁移是单向的:`schemaVersion` 一旦变为 2,0.8.0 之前的 CLI 将拒绝操作该项目。中途失败时 `schemaVersion` 保持为 1,直接重跑即可。
+
+### 从 v0.8.0 升级到 v0.9.0
+
+```bash
+npx @betterdanlins/ai-memory@0.9.0 update --dry-run
+npx @betterdanlins/ai-memory@0.9.0 update --yes
+```
+
+不需要迁移:`schemaVersion` 仍为 2,`migrate` 无事可做。适配层与入口受管区块原地更新,user 区块和 `.ai/knowledge/` 下的内容不受影响。
+
+如果你在 v0.8.0 下已经写了知识页,它们还没有 frontmatter。`kb build` 会跳过这些页,`kb check` 会逐个列出——按 `.ai/knowledge/entries/README.md` 与 `domains/README.md` 里的示例补上 frontmatter,该页才会进入自动索引。不补的页仍然是普通 Markdown,照常可用。
+
+v0.9.0 之前建的领域页没有生成区标记。把 `domains/README.md` 里的两对标记复制到页尾即可;没有标记时 `kb build` 会直接跳过该页。
 
 ## 生成什么
 

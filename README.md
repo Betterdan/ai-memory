@@ -47,6 +47,14 @@ An initialized project cannot be initialized again. A newer CLI first uses `upda
 
 ## Versions and compatibility
 
+### v0.9.0 — generated knowledge index and de-ruled adapters
+
+- Knowledge pages now carry frontmatter (`type`, `group`/`name`, `summary`, `contract`, `domains`, decision `status`/`date`), and `ai-memory kb build` regenerates the overview indexes plus each domain page's related entries and contracts from it.
+- Generated regions live inside `<!-- ai-memory:generated:<name> -->` markers, deliberately distinct from `ai-memory:managed`: `update` must never touch `.ai/knowledge/`, and separate markers make that structural rather than a matter of discipline. Content outside a marker is never rewritten, and malformed markers fail conservatively.
+- Adds `ai-memory kb check`, a read-only validation of frontmatter, internal links, dangling domain/decision references, and index staleness. It exits 1 on any problem, so it can gate a commit or a CI job as-is.
+- De-rules the adapter layer. Process rules now live only in `.ai/`; `.claude/`, `.agents/`, and `.codex/` keep triggers, tool-native mappings, and a single pointer. Two guards enforce it: adapter bodies stay within 200 characters — the two model-routing wrappers are allowed 400 because they are pure agent-name maps — and may not contain risk-tier or process wording.
+- The `CLAUDE.md` / `AGENTS.md` managed block becomes a pure routing table — task to skill and artifact location, no restated process. That block loads on every session, so it is the cheapest place to remove duplication.
+
 ### v0.8.0 — requirement points, knowledge layer, and explicit migration
 
 - Removes the Superpowers dependency. Option comparison, implementation planning, and code review are now first-class templates; `code-review` becomes a registered skill with adapters for both tools.
@@ -153,6 +161,19 @@ Run `update` first, then `migrate`: the migration writes into knowledge files th
 `migrate` merges `project-state.md` into `knowledge/overview.md` and `knowledge/iterations.md`, archives the original under `.ai/memory/archive/`, and leaves `.ai/memory/features/` in place with a list of dossiers to classify by hand against `.ai/skills/knowledge-structure.md`. Anything it cannot parse is moved verbatim into a "待整理" section instead of being dropped, and a target you have edited yourself is skipped rather than overwritten.
 
 Migration is one-way: once `schemaVersion` becomes 2, CLI versions before 0.8.0 refuse to operate on the project. If it fails midway, `schemaVersion` stays at 1 and the command can simply be run again.
+
+### Upgrade from v0.8.0 to v0.9.0
+
+```bash
+npx @betterdanlins/ai-memory@0.9.0 update --dry-run
+npx @betterdanlins/ai-memory@0.9.0 update --yes
+```
+
+No migration step: `schemaVersion` stays at 2, so `migrate` has nothing to do. The adapter layer and the managed entry block update in place; your user block and everything under `.ai/knowledge/` are untouched.
+
+If you already wrote knowledge pages under v0.8.0, they have no frontmatter yet. `kb build` skips them and `kb check` lists them by name — add the frontmatter shown in `.ai/knowledge/entries/README.md` and `domains/README.md` to opt each page into the generated indexes. Pages you never annotate keep working as plain Markdown.
+
+Domain pages created before v0.9.0 have no generated markers. Copy the two marker pairs from `domains/README.md` into the page tail; without them `kb build` simply leaves that page alone.
 
 ## What it generates
 
