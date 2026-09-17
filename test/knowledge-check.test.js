@@ -14,7 +14,7 @@ const tempDirs = createTempDirs();
 afterEach(() => tempDirs.cleanup());
 
 const VARS = {
-  projectName: 'demo', techStack: 'Go', date: '2026-09-16', modelProfile: 'inherit', frameworkVersion: '0.9.0',
+  projectName: 'demo', techStack: 'Go', date: '2026-09-16', modelProfile: 'inherit', frameworkVersion: '0.10.0',
 };
 
 const lines = (...rows) => rows.join('\n') + '\n';

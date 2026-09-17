@@ -47,6 +47,15 @@ An initialized project cannot be initialized again. A newer CLI first uses `upda
 
 ## Versions and compatibility
 
+### v0.10.0 — gates that run on their own
+
+- Adds `ai-memory gate ready`: a structural readiness check of every requirement point marked `in-progress` — sections present, no `TBD` left in the acceptance criteria, scope states what is out, contract status declared, open questions annotated, risk tier recorded. It checks for omissions and vagueness, never for whether the content is right.
+- Wires that check to a `PreToolUse` hook, so it runs when the agent starts editing implementation code rather than when someone remembers to type a command. Failing it exits 2, which blocks the edit and feeds the reasons back to the model. Edits under `.ai/` and `docs/` are always allowed — otherwise fixing the requirement itself would deadlock.
+- Adds `ai-memory gate contract`, which cross-checks a point's contract declaration against what actually changed: declaring "no external interface" while touching entry-point code, or declaring "contract diff confirmed" while no contract file moved, both fail. It runs on the `Stop` hook and blocks once, guarded by `stop_hook_active` so a misconfiguration cannot trap the session.
+- Adds `ai-memory hooks install`, which installs a git `pre-commit` gate running all three checks. Claude Code gets its enforcement from hooks; Codex and other tools have no equivalent mechanism, so this is how they get theirs.
+- `interfaces.md` gains `entry_globs` / `contract_globs` frontmatter. Until a project fills those in, `gate contract` skips and says what to add — it does not nag projects that keep no contract files.
+- Both gates are plain text and file checks: milliseconds, zero tokens, no model call, consistent with the rule against model-invoking guards.
+
 ### v0.9.0 — generated knowledge index and de-ruled adapters
 
 - Knowledge pages now carry frontmatter (`type`, `group`/`name`, `summary`, `contract`, `domains`, decision `status`/`date`), and `ai-memory kb build` regenerates the overview indexes plus each domain page's related entries and contracts from it.
@@ -174,6 +183,30 @@ No migration step: `schemaVersion` stays at 2, so `migrate` has nothing to do. T
 If you already wrote knowledge pages under v0.8.0, they have no frontmatter yet. `kb build` skips them and `kb check` lists them by name — add the frontmatter shown in `.ai/knowledge/entries/README.md` and `domains/README.md` to opt each page into the generated indexes. Pages you never annotate keep working as plain Markdown.
 
 Domain pages created before v0.9.0 have no generated markers. Copy the two marker pairs from `domains/README.md` into the page tail; without them `kb build` simply leaves that page alone.
+
+### Upgrade from v0.9.0 to v0.10.0
+
+```bash
+npx @betterdanlins/ai-memory@0.10.0 update --dry-run
+npx @betterdanlins/ai-memory@0.10.0 update --yes
+```
+
+No migration step; `schemaVersion` stays at 2.
+
+**If you customized `.claude/settings.json`, dry-run will report `merge`.** That file is a mixed-ownership JSON, so the framework refuses to overwrite it. Open the freshly generated template as a reference, copy the `PreToolUse` block and the `gate contract` entry under `Stop` into your own file, then run dry-run again. Projects that never touched the file update automatically.
+
+`gate ready` is active as soon as a requirement point is marked `in-progress` in `iterations.md`. Nothing is blocked while no point carries that status.
+
+`gate contract` stays dormant until `docs/architecture/interfaces.md` declares its paths. That file is user-owned, so `update` will not add the frontmatter for you:
+
+```yaml
+---
+entry_globs: [src/api/**, src/pages/**]
+contract_globs: [docs/api/**]
+---
+```
+
+The git gate is opt-in: run `ai-memory hooks install` to enable it, `ai-memory hooks status` to check. An existing `pre-commit` is never overwritten without `--force`.
 
 ## What it generates
 

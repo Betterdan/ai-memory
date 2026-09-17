@@ -47,6 +47,15 @@ npx @betterdanlins/ai-memory models configure --profile balanced
 
 ## 版本与兼容性
 
+### v0.10.0 —— 会自己运行的门禁
+
+- 新增 `ai-memory gate ready`:对 `iterations.md` 中标为 `in-progress` 的需求点做结构就绪检查——章节齐不齐、验收标准里还有没有 `TBD`、范围有没有写「不做」、契约状态有没有声明、开放问题有没有标注、实现交接有没有风险等级。它只查漏写与含糊,不判断内容对错。
+- 把这道检查接到 `PreToolUse` hook 上:agent 开始编辑实现代码时自动触发,而不是等人想起来敲命令。不合格以退出码 2 阻塞该次编辑,并把原因喂回模型。`.ai/` 与 `docs/` 下的编辑始终放行——否则连去修需求文档都会被挡住,直接死锁。
+- 新增 `ai-memory gate contract`:核对需求点的契约声明与实际改动是否一致。声明「不涉及对外接口」却碰了入口代码,或声明「契约 diff 已确认」却没有任何契约文件变更,都会被拦。它挂在 `Stop` hook 上,只阻塞一次,并用 `stop_hook_active` 保护,配置写错也不会把会话卡在结束不了的循环里。
+- 新增 `ai-memory hooks install`:安装 git `pre-commit` 门禁,提交前跑齐三项检查。Claude Code 的强制来自 hook;Codex 等工具没有等价机制,这条命令是它们获得强制的唯一途径。
+- `interfaces.md` 增加 `entry_globs` / `contract_globs` frontmatter。项目没填之前 `gate contract` 直接跳过并提示要补什么——不打扰还没维护契约文件的项目。
+- 两道门禁都是纯文本与文件检查:几毫秒、零 token、不调模型,与「不引入会调用模型的守卫工具」一致。
+
 ### v0.9.0 —— 知识索引自动生成与适配层去规则化
 
 - 知识页增加 frontmatter(`type`、`group`/`name`、`summary`、`contract`、`domains`,决策页 `status`/`date`),`ai-memory kb build` 据此重新生成 overview 的两张索引,以及每个领域页的关联入口与相关接口。
@@ -174,6 +183,30 @@ npx @betterdanlins/ai-memory@0.9.0 update --yes
 如果你在 v0.8.0 下已经写了知识页,它们还没有 frontmatter。`kb build` 会跳过这些页,`kb check` 会逐个列出——按 `.ai/knowledge/entries/README.md` 与 `domains/README.md` 里的示例补上 frontmatter,该页才会进入自动索引。不补的页仍然是普通 Markdown,照常可用。
 
 v0.9.0 之前建的领域页没有生成区标记。把 `domains/README.md` 里的两对标记复制到页尾即可;没有标记时 `kb build` 会直接跳过该页。
+
+### 从 v0.9.0 升级到 v0.10.0
+
+```bash
+npx @betterdanlins/ai-memory@0.10.0 update --dry-run
+npx @betterdanlins/ai-memory@0.10.0 update --yes
+```
+
+不需要迁移,`schemaVersion` 仍为 2。
+
+**如果你改过 `.claude/settings.json`,dry-run 会报 `merge`。** 该文件是混合所有权的 JSON,框架不会覆盖它。用新生成的模板作参考,把 `PreToolUse` 区块和 `Stop` 下的 `gate contract` 一条并进你自己的文件,再跑一次 dry-run。没动过该文件的项目会自动更新。
+
+`gate ready` 在 `iterations.md` 里有需求点标为 `in-progress` 时即生效;没有任何点处于该状态时不拦截任何编辑。
+
+`gate contract` 要等 `docs/architecture/interfaces.md` 声明了路径才生效。该文件属于用户资产,`update` 不会替你加 frontmatter:
+
+```yaml
+---
+entry_globs: [src/api/**, src/pages/**]
+contract_globs: [docs/api/**]
+---
+```
+
+git 门禁是可选的:`ai-memory hooks install` 启用,`ai-memory hooks status` 查看。已存在的 `pre-commit` 不加 `--force` 绝不覆盖。
 
 ## 生成什么
 
