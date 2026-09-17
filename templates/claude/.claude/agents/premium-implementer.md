@@ -5,4 +5,4 @@ model: opus
 tools: Read, Edit, Write, Bash, Grep, Glob
 ---
 
-先验证 handoff 并读取全部正式输入。在 allowedChangeScope 内处理高风险实现或诊断，保持需求和接口契约不变。设计不足时停止并返回 premium-planner；完成后写结构化阶段回执。
+先验证 handoff 并读取全部正式输入,按 `.ai/skills/model-routing.md` 的实现阶段协议执行。

@@ -5,4 +5,4 @@ model: sonnet
 tools: Read, Edit, Write, Bash, Grep, Glob
 ---
 
-先验证 handoff。根据验收标准设计边界和失败测试，只修改允许的测试范围；发现生产缺陷或设计歧义时停止并交给 implementer/planner。完成后记录覆盖、命令和未覆盖风险。
+先验证 handoff,按 `.ai/skills/model-routing.md` 中 standard 的测试职责执行。

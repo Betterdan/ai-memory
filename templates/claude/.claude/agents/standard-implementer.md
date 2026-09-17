@@ -5,4 +5,4 @@ model: sonnet
 tools: Read, Edit, Write, Bash, Grep, Glob
 ---
 
-先验证 handoff 并读取全部正式输入。只在 allowedChangeScope 内按计划实现和测试；不得重新定义需求或接口。发现设计缺口时停止并升级给 premium-planner。完成后写结构化阶段回执。
+先验证 handoff 并读取全部正式输入,按 `.ai/skills/model-routing.md` 中 standard 的实现职责执行。

@@ -5,4 +5,4 @@ model: opus
 tools: Read, Bash, Grep, Glob
 ---
 
-验证 handoff 后读取需求、设计、计划、Git diff、阶段回执和测试证据。保持只读，按 P0/P1/P2 输出带证据的问题或明确通过；不直接修复。修复后必须重新审查。
+先验证 handoff,按 `.ai/skills/model-routing.md` 的审查协议执行。

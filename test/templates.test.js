@@ -352,9 +352,8 @@ test('入口受管区块与任务路由登记风险等级单一事实源', async
   for (const entry of ['claude/CLAUDE.md', 'codex/AGENTS.md']) {
     const body = await readFile(path.join(ROOT, ...entry.split('/')), 'utf8');
     assert.ok(!body.includes('S 级精简自检'), `${entry} 仍要求 S 级自检`);
-    assert.ok(body.includes('S 级不做自检,直接实现并测试'));
-    assert.ok(body.includes('risk-levels.md'));
-    assert.ok(body.includes('M/L 级按 model-routing skill 创建/验证 handoff'));
+    assert.ok(body.includes('risk-levels.md'), '入口须路由到等级事实源');
+    assert.ok(body.includes('model-routing skill'), '入口须路由到模型路由 skill');
   }
 
   for (const file of await collectFiles(ROOT)) {
@@ -405,14 +404,15 @@ test('需求目录、进度表与适配层按需求点表述', async () => {
   assert.ok(iterations.includes('planned(已拆分待定稿)'));
 
   const finalize = await readFile(path.join(ROOT, 'claude', '.claude', 'commands', 'finalize-requirement.md'), 'utf8');
-  assert.ok(finalize.includes('拆分判断'));
-  assert.ok(finalize.includes('就绪标准'));
+  assert.ok(finalize.includes('.ai/skills/requirements-flow.md'), '命令只留指向,规则在方法论里');
+  assert.ok(finalize.includes('需求集合或需求点'), '触发语义须保留');
 
   const codexFlow = await readFile(path.join(ROOT, 'codex', '.agents', 'skills', 'requirements-flow', 'SKILL.md'), 'utf8');
-  assert.ok(codexFlow.includes('M/L 级的 critic 门'), 'codex 侧 critic 门必须限定等级');
-  assert.ok(codexFlow.includes('S 级不做自检'));
+  assert.ok(codexFlow.includes('.ai/skills/requirements-flow.md'));
+  assert.ok(codexFlow.includes('Codex 侧无独立上下文'), '工具能力映射保留在适配层');
 
-  for (const file of await collectFiles(ROOT)) {
+  // 只扫方法论与文档层:适配层已去规则化,只会出现 draft/final 路径本身
+  for (const file of await collectFiles(path.join(ROOT, 'common'))) {
     const rel = path.relative(ROOT, file).split(path.sep).join('/');
     const body = await readFile(file, 'utf8');
     if (body.includes('draft') && body.includes('final')) {
@@ -471,8 +471,7 @@ test('对外接口契约是跨等级硬门槛', async () => {
 
   for (const entry of ['claude/CLAUDE.md', 'codex/AGENTS.md']) {
     const body = await readFile(path.join(ROOT, ...entry.split('/')), 'utf8');
-    assert.ok(body.includes('interface-contract.md'));
-    assert.ok(body.includes('不分等级'));
+    assert.ok(body.includes('interface-contract.md'), '入口须路由到契约门槛');
   }
 
   for (const file of await collectFiles(ROOT)) {
@@ -604,5 +603,71 @@ test('frontmatter 规范与生成区标记写入方法论,两套标记物理隔�
     // knowledge-structure.md 是规范文档,必须写出标记格式本身
     const allowed = rel.startsWith('common/.ai/knowledge/') || rel === 'common/.ai/skills/knowledge-structure.md';
     assert.ok(allowed, `生成区标记只应出现在知识层或其规范文档: ${rel}`);
+  }
+});
+
+// 适配层只留触发条件与工具原生映射;流程规则一律在 .ai/。
+// 这两条守卫替代了此前每改一次 .ai/skills/ 就要人工 grep 适配层的做法。
+const ADAPTER_FORBIDDEN = ['S 级', 'M 级', 'L 级', 'M/L', '就绪标准', '拆分判断', '逐条', '门槛', '不允许', '不得'];
+const ADAPTER_BODY_LIMIT = 200;
+// model-routing 的正文是 agent 名映射,属工具原生映射,不是流程规则
+const ADAPTER_LIMIT_EXCEPTIONS = new Map([
+  ['claude/.claude/skills/model-routing/SKILL.md', 400],
+  ['codex/.agents/skills/model-routing/SKILL.md', 400],
+]);
+
+function adapterBody(rel, raw) {
+  if (rel.endsWith('.toml')) {
+    const open = 'developer_instructions = """';
+    const start = raw.indexOf(open);
+    if (start < 0) return '';
+    return raw.slice(start + open.length, raw.indexOf('"""', start + open.length)).trim();
+  }
+  const parts = raw.split(/^---$/m);
+  return (parts.length >= 3 ? parts.slice(2).join('---') : raw).trim();
+}
+
+test('适配层只留触发条件与工具原生映射', async () => {
+  const files = [
+    ...(await collectFiles(path.join(ROOT, 'claude'))),
+    ...(await collectFiles(path.join(ROOT, 'codex'))),
+  ];
+  let checked = 0;
+  for (const file of files) {
+    const rel = path.relative(ROOT, file).split(path.sep).join('/');
+    if (rel.endsWith('CLAUDE.md') || rel.endsWith('AGENTS.md')) continue;
+    if (!rel.endsWith('.md') && !rel.endsWith('.toml')) continue;
+    const body = adapterBody(rel, await readFile(file, 'utf8'));
+    const limit = ADAPTER_LIMIT_EXCEPTIONS.get(rel) ?? ADAPTER_BODY_LIMIT;
+    assert.ok(body.length <= limit, `${rel} 正文 ${body.length} 字符,超过上限 ${limit}`);
+    for (const word of ADAPTER_FORBIDDEN) {
+      assert.ok(!body.includes(word), `${rel} 正文含流程规则措辞「${word}」,应推回 .ai/`);
+    }
+    assert.ok(body.includes('.ai/'), `${rel} 正文须指向 .ai/ 下的方法论`);
+    checked += 1;
+  }
+  assert.ok(checked >= 30, `扫描范围异常,只检查了 ${checked} 个适配层文件`);
+});
+
+test('入口受管区块只做路由,不复述流程', async () => {
+  for (const entry of ['claude/CLAUDE.md', 'codex/AGENTS.md']) {
+    const raw = await readFile(path.join(ROOT, ...entry.split('/')), 'utf8');
+    const block = raw.slice(
+      raw.indexOf('<!-- ai-memory:managed:start -->'),
+      raw.indexOf('<!-- ai-memory:managed:end -->')
+    );
+    for (const word of ADAPTER_FORBIDDEN) {
+      assert.ok(!block.includes(word), `${entry} 受管区块含流程规则措辞「${word}」`);
+    }
+    for (const skill of [
+      'project-inception', 'requirements-flow', 'feature-design', 'code-review',
+      'delivery-readiness', 'memory-update', 'critic', 'model-routing',
+    ]) {
+      assert.ok(block.includes(skill), `${entry} 受管区块丢失 ${skill} 的路由`);
+    }
+    for (const source of ['risk-levels.md', 'interface-contract.md', 'knowledge-structure.md']) {
+      assert.ok(block.includes(source), `${entry} 受管区块丢失 ${source} 的路由`);
+    }
+    assert.ok(block.includes('.ai/README.md'), '进场协议入口不得丢失');
   }
 });

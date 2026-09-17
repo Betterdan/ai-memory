@@ -39,5 +39,15 @@
 
 ## 与工具专属配置的关系
 
-CLAUDE.md、AGENTS.md 只是薄入口;`.claude/skills/`、`.agents/skills/` 只是触发包装。
+CLAUDE.md、AGENTS.md 只是薄入口;`.claude/`、`.agents/`、`.codex/` 只是触发包装。
 **正文永远只有本目录一份**,修改方法论只改这里,适配层不需要动。
+
+适配层的边界:
+
+| 留在适配层 | 推回 `.ai/` |
+|---|---|
+| 触发条件(frontmatter 的 description、argument-hint) | 等级判断与流程深度 |
+| 工具原生映射(subagent 名、model 别名、reasoning effort、$ARGUMENTS、tools) | 门槛、步骤与纪律措辞 |
+| 一句指向 `.ai/skills/<名称>.md` 的指令 | 任何「必须 / 不得 / 不允许」类规则 |
+
+入口受管区块同理:只做「任务 → skill + 产物位置」的路由,不复述流程。

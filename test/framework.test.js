@@ -218,7 +218,7 @@ test('未修改的旧版项目升级时受管区块替换 Superpowers 编排且�
   const upgraded = await readFile(path.join(dir, 'CLAUDE.md'), 'utf8');
   assert.ok(upgraded.includes(userBlock), '用户区块必须原样保留');
   assert.ok(!/superpowers/i.test(upgraded));
-  assert.ok(upgraded.includes('## 方案比较、实施计划与代码审查'));
+  assert.ok(upgraded.includes('代码审查 → code-review skill'));
   await access(path.join(dir, '.claude', 'skills', 'code-review', 'SKILL.md'));
   assert.equal(await readFile(path.join(dir, '.ai', 'memory', 'features', 'legacy-feature.md'), 'utf8'), 'KEEP_FEATURE_DOSSIER');
 });

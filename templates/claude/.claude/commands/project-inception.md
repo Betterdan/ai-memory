@@ -2,4 +2,4 @@
 description: 为 0→1 项目或重大重构建立语言无关的工程基线
 ---
 
-按 `.ai/skills/project-inception.md` 执行。先判断是否属于 0→1、首次补建基线或重大架构重构；不适用则停止，不为普通功能重复生成项目基线。
+按 `.ai/skills/project-inception.md` 执行;是否适用由该文件判断。
