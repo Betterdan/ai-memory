@@ -1,6 +1,7 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { hasGeneratedBlock, readGeneratedBlock, replaceGeneratedBlock } from './generated-blocks.js';
+import { parseFrontmatter } from './frontmatter.js';
 import { assertNoSymlinkPath, resolveSafeDestination } from './path-safety.js';
 
 const KNOWLEDGE = '.ai/knowledge';
@@ -10,47 +11,14 @@ const DOMAINS_INDEX = 'domains-index';
 const RELATED_ENTRIES = 'related-entries';
 const RELATED_CONTRACTS = 'related-contracts';
 
+export { parseFrontmatter };
+
 const REQUIRED = {
   entry: ['group', 'form', 'summary'],
   domain: ['name', 'summary'],
   decision: ['status', 'date'],
 };
 
-export function parseFrontmatter(body) {
-  if (!body.startsWith('---')) return null;
-  const lines = body.split('\n');
-  if (lines[0].trim() !== '---') return null;
-  const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
-  if (end < 0) return null;
-
-  const data = {};
-  for (const line of lines.slice(1, end)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const separator = trimmed.indexOf(':');
-    if (separator <= 0) return null;
-    const key = trimmed.slice(0, separator).trim();
-    const raw = trimmed.slice(separator + 1).trim();
-    if (!/^[a-z][a-z0-9_]*$/.test(key)) return null;
-    data[key] = parseValue(raw);
-  }
-  return { data, rest: lines.slice(end + 1).join('\n') };
-}
-
-function parseValue(raw) {
-  if (raw.startsWith('[') && raw.endsWith(']')) {
-    return raw.slice(1, -1).split(',').map(unquote).filter(Boolean);
-  }
-  return unquote(raw);
-}
-
-function unquote(value) {
-  const trimmed = value.trim();
-  if (trimmed.length >= 2 && (trimmed.startsWith('"') || trimmed.startsWith("'"))) {
-    if (trimmed[0] === trimmed[trimmed.length - 1]) return trimmed.slice(1, -1);
-  }
-  return trimmed;
-}
 
 export async function scanKnowledge(targetDir) {
   const pages = { entry: [], domain: [], decision: [] };

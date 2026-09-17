@@ -1,9 +1,11 @@
 #!/bin/sh
 # ai-memory 就绪门禁的跨工具兜底:提交前检查进行中的需求点定稿是否齐备。
 # 安装(显式动作,框架不会替你装):
-#   cp .ai/hooks/pre-commit.sample .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+#   ai-memory hooks install
+# 或手工:cp .ai/hooks/pre-commit.sample .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 #
-# Claude Code 侧已有 PreToolUse hook 在开工前拦截;本脚本是提交时的第二道。
+# Claude Code 侧有 PreToolUse/Stop hook 在开工前与收尾时拦截;
+# 其他工具(如 Codex)没有等价机制,本脚本是它们唯一的自动门禁。
 # ai-memory 不可用时直接放行——门禁坏掉不应该让人无法提交。
 
 if ! npx --no-install ai-memory --version >/dev/null 2>&1; then
@@ -11,4 +13,5 @@ if ! npx --no-install ai-memory --version >/dev/null 2>&1; then
 fi
 
 npx --no-install ai-memory gate ready || exit 1
+npx --no-install ai-memory gate contract --staged || exit 1
 npx --no-install ai-memory kb check || exit 1

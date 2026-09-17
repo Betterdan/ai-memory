@@ -68,6 +68,12 @@ export function checkReadiness(body) {
   return failures;
 }
 
+export function contractDeclaration(body) {
+  if (body.includes('不涉及对外接口') || body.includes('不涉及对外可观察接口')) return 'not-applicable';
+  if (body.includes('契约 diff 已确认')) return 'confirmed';
+  return null;
+}
+
 export async function inProgressPoints(targetDir) {
   const body = await readOptional(path.join(targetDir, ...ITERATIONS.split('/')));
   if (body === undefined) return [];
@@ -82,7 +88,7 @@ export async function inProgressPoints(targetDir) {
   return points;
 }
 
-async function locateFinal(targetDir, point) {
+export async function locateFinal(targetDir, point) {
   const root = path.join(targetDir, ...REQUIREMENTS.split('/'));
   let versions;
   try {

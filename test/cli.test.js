@@ -328,3 +328,42 @@ test('gate ready 的退出码:普通模式 1,hook 模式 2,坏输入放行', asy
   const malformed = await pending;
   assert.ok(malformed.stderr.includes('就绪门禁跳过'), '门禁自身出错时必须放行');
 });
+
+test('gate contract 的 hook 模式:不一致时 2,防循环时 0', async () => {
+  const dir = await temp('aim-cli-contract-');
+  await run(process.execPath, [CLI, 'init', '--name', 'demo', '--stack', 'Go', '--tools', '', '--yes'], { cwd: dir });
+  await run('git', ['init', '-q', '.'], { cwd: dir });
+  await run('git', ['config', 'user.email', 'test@example.com'], { cwd: dir });
+  await run('git', ['config', 'user.name', 'test'], { cwd: dir });
+
+  const interfaces = path.join(dir, 'docs', 'architecture', 'interfaces.md');
+  const body = await readFile(interfaces, 'utf8');
+  await writeFile(interfaces, body
+    .replace('entry_globs: []', 'entry_globs: [src/api/**]')
+    .replace('contract_globs: []', 'contract_globs: [docs/api/**]'));
+
+  const iterations = path.join(dir, '.ai', 'knowledge', 'iterations.md');
+  const rows = await readFile(iterations, 'utf8');
+  await writeFile(iterations, rows.replace('|---|---|---|---|---|',
+    '|---|---|---|---|---|\n| v1.0.0 | 改签名 | M | in-progress | 无 |'));
+  const finalDir = path.join(dir, 'docs', 'requirements', 'v1.0.0', 'final');
+  await mkdir(finalDir, { recursive: true });
+  await writeFile(path.join(finalDir, '改签名.md'), [
+    '## 目标', '调整接口。', '## 范围', '本次不做:批量。',
+    '## 验收标准', '- 缺字段返回 400', '## 开放问题', '无',
+    '## 实现交接', '风险等级:M。不涉及对外接口。', '',
+  ].join('\n'));
+  await mkdir(path.join(dir, 'src', 'api'), { recursive: true });
+  await writeFile(path.join(dir, 'src', 'api', 'order.js'), 'export const a = 1;\n');
+
+  const blocking = run(process.execPath, [CLI, 'gate', 'contract', '--hook'], { cwd: dir });
+  blocking.child.stdin.end('{}');
+  const blocked = await blocking.then(() => { throw new Error('不一致时必须以 2 阻塞'); }, err => err);
+  assert.equal(blocked.code, 2);
+  assert.ok(blocked.stderr.includes('不涉及对外接口'));
+
+  const guarded = run(process.execPath, [CLI, 'gate', 'contract', '--hook'], { cwd: dir });
+  guarded.child.stdin.end(JSON.stringify({ stop_hook_active: true }));
+  const allowed = await guarded;
+  assert.equal(allowed.stderr.trim(), '', 'stop_hook_active 为 true 时必须安静放行');
+});

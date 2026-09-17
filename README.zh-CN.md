@@ -229,6 +229,8 @@ AGENTS.md + .agents/ + .codex/# Codex:skills 与分层自定义 agents
 | `kb build [--dry-run]` | 按知识页 frontmatter 重新生成索引与领域页横向视图;只重写生成区块 |
 | `kb check` | 只读校验 frontmatter、内部链接、悬空引用与索引是否过期;有问题时退出码 1 |
 | `gate ready [--point <名>] [--hook]` | 检查进行中需求点定稿的结构就绪度;退出码 1,`--hook` 模式为 2 以便 PreToolUse 阻塞实现 |
+| `gate contract [--staged] [--hook]` | 核对需求点的契约声明与实际改动是否一致;`interfaces.md` 未填 globs 时跳过 |
+| `hooks install [--force]` / `hooks status` | 安装跨工具的 git pre-commit 门禁,让 Codex 等工具也有强制 |
 | `models show` | 显示当前 profile 和每个阶段解析后的模型等级 |
 | `models configure --profile <name>` | 选择 `inherit`、`balanced` 或 `quality`,不修改需求、设计或代码 |
 | `workflow prepare` | 用正式输入文档的哈希创建本地交接清单 |

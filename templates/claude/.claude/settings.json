@@ -16,6 +16,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "npx --no-install ai-memory gate contract --hook"
+          },
+          {
+            "type": "command",
             "command": "echo '[ai-memory] 会话收尾:如有可验收工程节点、关键决策或跨会话风险,请写入 .ai/memory/session-log.md'"
           }
         ]

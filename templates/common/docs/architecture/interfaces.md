@@ -1,9 +1,19 @@
+---
+entry_globs: []
+contract_globs: []
+---
+
 # 对外入口与契约基线
 
 > 项目：{{projectName}}
 > 技术栈：{{techStack}}
 > 最后更新：{{date}}
 > 本文件记录本项目自己的答案，不预设项目类型。未使用的形态写「不适用」，不要删行。
+>
+> 顶部 frontmatter 是给 `ai-memory gate contract` 用的机器可读路径,填了才生效:
+> `entry_globs` 是对外入口代码的路径(如 `[src/api/**, src/pages/**]`),
+> `contract_globs` 是契约文件的路径(如 `[docs/api/**]`)。只支持 `**` 与 `*`。
+> 下方表格是给人看的说明,两者不一致时以 frontmatter 为准。
 
 ## 项目类型
 

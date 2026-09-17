@@ -9,7 +9,9 @@ import {
   resolveModelRouting, writeModelRoutingConfig,
 } from '../src/model-routing.js';
 import { applyMigration, planMigration } from '../src/migrate.js';
+import { gateContract } from '../src/gate-contract.js';
 import { gateReady, isHookAllowedPath } from '../src/gate-ready.js';
+import { gitHookStatus, installGitHook } from '../src/git-hooks.js';
 import { checkKnowledge } from '../src/knowledge-check.js';
 import { applyKnowledgeBuild, planKnowledgeBuild } from '../src/knowledge-index.js';
 import { ScaffoldError, scaffold } from '../src/scaffold.js';
@@ -338,6 +340,61 @@ gate
       for (const failure of item.failures) console.log(`  - ${failure}`);
     }
     if (blocked.length) process.exitCode = 1;
+  });
+
+gate
+  .command('contract')
+  .description('核对需求点的契约声明与本次改动是否一致;只读,不执行项目命令')
+  .option('--staged', '比对暂存区而不是工作区')
+  .option('--hook', 'hook 模式:不一致时以退出码 2 阻塞')
+  .action(async (opts) => {
+    if (opts.hook) {
+      try {
+        const input = await readStdin();
+        const payload = input ? JSON.parse(input) : {};
+        if (payload?.stop_hook_active) return;
+        const result = await gateContract({ targetDir: process.cwd(), staged: Boolean(opts.staged) });
+        if (result.skipped || !result.problems.length) return;
+        console.error('[ai-memory] 契约声明与本次改动不一致:');
+        for (const problem of result.problems) console.error(`  ${problem.point}:${problem.message}`);
+        process.exitCode = 2;
+      } catch (err) {
+        console.error(`[ai-memory] 契约门禁跳过:${err.message}`);
+      }
+      return;
+    }
+
+    const result = await gateContract({ targetDir: process.cwd(), staged: Boolean(opts.staged) });
+    if (result.skipped) {
+      console.log(`跳过:${result.skipped}`);
+      return;
+    }
+    if (!result.problems.length) {
+      console.log(`契约声明与改动一致(入口 ${result.touchedEntries.length} 处,契约 ${result.touchedContracts.length} 处)`);
+      return;
+    }
+    for (const problem of result.problems) console.log(`不一致 ${problem.point}:${problem.message}`);
+    process.exitCode = 1;
+  });
+
+const hooks = program.command('hooks').description('安装跨工具的 git 门禁;任何 AI 工具下都生效');
+
+hooks
+  .command('install')
+  .description('把 .ai/hooks/pre-commit.sample 装到 .git/hooks/pre-commit')
+  .option('--force', '覆盖已存在的 pre-commit')
+  .action(async (opts) => {
+    const result = await installGitHook({ targetDir: process.cwd(), force: Boolean(opts.force) });
+    console.log(result.message);
+    if (!result.installed) process.exitCode = 1;
+  });
+
+hooks
+  .command('status')
+  .description('查看 git 门禁是否已安装')
+  .action(async () => {
+    const result = await gitHookStatus({ targetDir: process.cwd() });
+    console.log(result.message);
   });
 
 program.parseAsync().catch((e) => {
