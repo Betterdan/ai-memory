@@ -10,7 +10,7 @@ const STATUS_LABEL = {
   done: '已完成',
 };
 
-export function buildHtml({ overview, pages, generatedAt }) {
+export function buildHtml({ overview, pages, generatedAt, mermaidSource }) {
   const groups = [];
   for (const page of pages) {
     let bucket = groups.find(item => item.group === page.group);
@@ -56,6 +56,7 @@ export function buildHtml({ overview, pages, generatedAt }) {
     `<div class="stamp">${escapeHtml(generatedAt)} 由 ai-memory kb export 生成</div>`,
     '</aside>',
     `<main id="main">${body}</main>`,
+    ...(mermaidSource ? [`<script>${mermaidSource}</script>`, `<script>${MERMAID_INIT}</script>`] : []),
     `<script>${SCRIPT}</script>`,
     '</body>',
     '</html>',
@@ -236,6 +237,7 @@ const SCRIPT = `
     });
     if(sidebar) sidebar.classList.remove('open');
     window.scrollTo(0,0);
+    if(window.__renderMermaid) window.__renderMermaid();
   }
 
   nav.addEventListener('click',function(event){
@@ -266,5 +268,22 @@ const SCRIPT = `
   });
 
   show((location.hash||'#home').slice(1));
+})();
+`;
+
+// 页面默认 hidden,隐藏元素渲染出来的 SVG 尺寸为 0,
+// 所以只渲染当前可见且尚未处理的图,由 show() 每次切换时调用
+const MERMAID_INIT = `
+(function(){
+  if(typeof mermaid==='undefined') return;
+  var dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+  mermaid.initialize({startOnLoad:false,theme:dark?'dark':'default'});
+  window.__renderMermaid=function(){
+    var nodes=[].slice.call(document.querySelectorAll('.mermaid')).filter(function(node){
+      return !node.getAttribute('data-processed') && node.offsetParent!==null;
+    });
+    if(!nodes.length) return;
+    try{ mermaid.run({nodes:nodes}); }catch(err){ console.error('mermaid 渲染失败',err); }
+  };
 })();
 `;

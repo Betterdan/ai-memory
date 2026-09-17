@@ -1,4 +1,4 @@
-import { afterEach, test } from 'node:test';
+import { after, afterEach, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -11,6 +11,16 @@ import { createTempDirs } from './temp-dirs.js';
 
 const TEMPLATES = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'templates');
 const tempDirs = createTempDirs();
+const originalCache = process.env.AI_MEMORY_CACHE;
+// 隔离 mermaid 缓存:测试不联网,也不依赖开发机上已有的缓存。
+// 必须在 before/after 而不是 afterEach 里还原,否则第一个用例之后隔离就失效了。
+before(() => {
+  process.env.AI_MEMORY_CACHE = path.join(path.dirname(fileURLToPath(import.meta.url)), '.no-such-cache');
+});
+after(() => {
+  if (originalCache === undefined) delete process.env.AI_MEMORY_CACHE;
+  else process.env.AI_MEMORY_CACHE = originalCache;
+});
 afterEach(() => tempDirs.cleanup());
 
 const VARS = {
@@ -79,6 +89,9 @@ async function snapshot(dir, skip) {
 }
 
 const read = (dir, rel) => readFile(path.join(dir, ...rel.split('/')), 'utf8');
+// 夹具里有 mermaid 图,测试环境拿不到 bundle 会降级并产生一条警告,
+// 所以图片相关断言只看图片自己的警告
+const imageWarnings = result => result.warnings.filter(item => item.includes('图片'));
 
 test('需求点解析限定在「需求点」章节,不误读需求集合表', () => {
   const body = lines(
@@ -112,7 +125,7 @@ test('标题取首个一级标题,没有则回退文件名', () => {
 
 test('导出单文件且不含任何外部资源引用', async () => {
   const dir = await makeProject();
-  const result = await exportKnowledge({ targetDir: dir });
+  const result = await exportKnowledge({ targetDir: dir, allowDownload: false });
   assert.equal(result.out, '.ai/knowledge.html');
 
   const html = await read(dir, '.ai/knowledge.html');
@@ -123,7 +136,7 @@ test('导出单文件且不含任何外部资源引用', async () => {
 
 test('四类来源全部导出,README 与 draft 被排除', async () => {
   const dir = await makeProject();
-  await exportKnowledge({ targetDir: dir });
+  await exportKnowledge({ targetDir: dir, allowDownload: false });
   const html = await read(dir, '.ai/knowledge.html');
 
   assert.ok(html.includes('订单 API'), '入口页');
@@ -140,7 +153,7 @@ test('四类来源全部导出,README 与 draft 被排除', async () => {
 
 test('首页给出项目信息、需求点分组与系统构成', async () => {
   const dir = await makeProject();
-  await exportKnowledge({ targetDir: dir });
+  await exportKnowledge({ targetDir: dir, allowDownload: false });
   const html = await read(dir, '.ai/knowledge.html');
 
   assert.ok(html.includes('订单系统'));
@@ -161,14 +174,14 @@ test('首页给出项目信息、需求点分组与系统构成', async () => {
 
 test('GFM 全套语法渲染正确,mermaid 暂以代码块呈现', async () => {
   const dir = await makeProject();
-  await exportKnowledge({ targetDir: dir });
+  await exportKnowledge({ targetDir: dir, allowDownload: false });
   const html = await read(dir, '.ai/knowledge.html');
 
   assert.ok(html.includes('<table>'), '表格');
   assert.ok(html.includes('checkbox'), '任务列表');
   assert.ok(html.includes('<del>'), '删除线');
   assert.ok(html.includes('<blockquote>'), '引用块');
-  assert.ok(html.includes('language-mermaid'), 'mermaid 块保留为代码,留给后续渲染');
+  assert.ok(html.includes('language-mermaid'), '拿不到 mermaid 时降级为代码块');
 });
 
 test('相对图片内联为 data URI,外链原样保留', async () => {
@@ -178,11 +191,11 @@ test('相对图片内联为 data URI,外链原样保留', async () => {
     '---', 'type: entry', 'group: 图示', 'form: 页面', 'summary: 带图', '---',
     '', '# 带图', '', '![流程](../img/flow.svg)', '', '![远程](https://example.com/a.png)'));
 
-  const result = await exportKnowledge({ targetDir: dir });
+  const result = await exportKnowledge({ targetDir: dir, allowDownload: false });
   const html = await read(dir, '.ai/knowledge.html');
   assert.ok(html.includes('data:image/svg+xml;base64,'), '本地图片必须内联');
   assert.ok(html.includes('https://example.com/a.png'), '外链图片原样保留');
-  assert.deepEqual(result.warnings, []);
+  assert.deepEqual(imageWarnings(result), [], '图片处理不应产生警告');
 });
 
 test('图片读不到或过大时跳过并警告,不中断导出', async () => {
@@ -192,17 +205,18 @@ test('图片读不到或过大时跳过并警告,不中断导出', async () => {
     '---', 'type: entry', 'group: 图问题', 'form: 页面', 'summary: 图有问题', '---',
     '', '# 图有问题', '', '![缺失](./nope.png)', '', '![过大](../big.png)'));
 
-  const result = await exportKnowledge({ targetDir: dir });
+  const result = await exportKnowledge({ targetDir: dir, allowDownload: false });
   const html = await read(dir, '.ai/knowledge.html');
-  assert.equal(result.warnings.length, 2);
-  assert.ok(result.warnings.some(item => item.includes('读不到')));
-  assert.ok(result.warnings.some(item => item.includes('未内联')));
+  const images = imageWarnings(result);
+  assert.equal(images.length, 2);
+  assert.ok(images.some(item => item.includes('读不到')));
+  assert.ok(images.some(item => item.includes('未内联')));
   assert.ok(html.includes('图有问题'), '导出不得中断');
 });
 
 test('侧栏条目数等于总览加所有页面', async () => {
   const dir = await makeProject();
-  const result = await exportKnowledge({ targetDir: dir });
+  const result = await exportKnowledge({ targetDir: dir, allowDownload: false });
   const html = await read(dir, '.ai/knowledge.html');
   const items = (html.match(/class="nav-item"/g) || []).length;
   assert.equal(items, result.pages.length + 1, '总览 + 每页一条');
@@ -210,7 +224,7 @@ test('侧栏条目数等于总览加所有页面', async () => {
 
 test('自适应与深浅色:含窄屏断点与系统配色查询', async () => {
   const dir = await makeProject();
-  await exportKnowledge({ targetDir: dir });
+  await exportKnowledge({ targetDir: dir, allowDownload: false });
   const html = await read(dir, '.ai/knowledge.html');
   assert.ok(html.includes('@media (max-width:640px)'));
   assert.ok(html.includes('prefers-color-scheme:dark'));
@@ -219,7 +233,7 @@ test('自适应与深浅色:含窄屏断点与系统配色查询', async () => {
 
 test('知识层为空时给出空状态与下一步', async () => {
   const dir = await makeProject({ content: false });
-  const result = await exportKnowledge({ targetDir: dir });
+  const result = await exportKnowledge({ targetDir: dir, allowDownload: false });
   const html = await read(dir, '.ai/knowledge.html');
   assert.ok(html.includes('还没有可展示的内容'));
   assert.ok(html.includes('.ai/knowledge/entries/'));
@@ -236,9 +250,9 @@ test('同输入两次导出结果一致,且只写输出文件', async () => {
   const before = await snapshot(dir, '.ai/knowledge.html');
   const now = new Date('2026-09-17T00:00:00.000Z');
 
-  await exportKnowledge({ targetDir: dir, now });
+  await exportKnowledge({ targetDir: dir, allowDownload: false, now });
   const first = await read(dir, '.ai/knowledge.html');
-  await exportKnowledge({ targetDir: dir, now });
+  await exportKnowledge({ targetDir: dir, allowDownload: false, now });
   const second = await read(dir, '.ai/knowledge.html');
 
   assert.equal(first, second);
@@ -247,7 +261,7 @@ test('同输入两次导出结果一致,且只写输出文件', async () => {
 
 test('--out 可以改输出位置', async () => {
   const dir = await makeProject();
-  const result = await exportKnowledge({ targetDir: dir, out: 'wiki/项目.html' });
+  const result = await exportKnowledge({ targetDir: dir, allowDownload: false, out: 'wiki/项目.html' });
   assert.equal(result.out, 'wiki/项目.html');
   assert.ok((await read(dir, 'wiki/项目.html')).includes('订单系统'));
 });
@@ -257,7 +271,7 @@ test('原样 HTML 不做净化:知识页与源码同等信任', async () => {
   await write(dir, '.ai/knowledge/entries/raw.md', lines(
     '---', 'type: entry', 'group: 原样', 'form: 页面', 'summary: 原样 HTML', '---',
     '', '# 原样', '', '<div class="custom">自定义块</div>'));
-  await exportKnowledge({ targetDir: dir });
+  await exportKnowledge({ targetDir: dir, allowDownload: false });
   const html = await read(dir, '.ai/knowledge.html');
   assert.ok(html.includes('<div class="custom">自定义块</div>'));
 });
@@ -267,7 +281,39 @@ test('标题与分组名做 HTML 转义,不产生破损结构', async () => {
   await write(dir, '.ai/knowledge/entries/tricky.md', lines(
     '---', 'type: entry', 'group: 尖括号', 'form: 页面', 'summary: x', '---',
     '', '# <b>标题</b> & "引号"'));
-  await exportKnowledge({ targetDir: dir });
+  await exportKnowledge({ targetDir: dir, allowDownload: false });
   const html = await read(dir, '.ai/knowledge.html');
   assert.ok(html.includes('&lt;b&gt;标题&lt;/b&gt; &amp; &quot;引号&quot;'), '导航标题必须转义');
+});
+
+test('给定本地 mermaid bundle 时内联并转换为渲染容器', async () => {
+  const dir = await makeProject();
+  const bundle = path.join(await tempDirs.make('aim-bundle-'), 'mermaid.min.js');
+  await writeFile(bundle, 'globalThis.mermaid={initialize(){},run(){}};\n');
+
+  const result = await exportKnowledge({ targetDir: dir, allowDownload: false, mermaidPath: bundle });
+  const html = await read(dir, '.ai/knowledge.html');
+
+  assert.equal(result.mermaid, true);
+  assert.ok(html.includes('<pre class="mermaid">'), '图必须放进 mermaid 容器');
+  assert.ok(!html.includes('language-mermaid'), '不应再是普通代码块');
+  assert.ok(html.includes('globalThis.mermaid'), 'bundle 必须内联');
+  assert.ok(html.includes('__renderMermaid'), '需要按页渲染的钩子');
+  assert.ok(!/(src|href)="https?:/.test(html), '内联后仍不得有外部引用');
+  assert.deepEqual(result.warnings.filter(item => item.includes('mermaid')), []);
+});
+
+test('内容里没有 mermaid 时完全不解析资源,也不联网', async () => {
+  const dir = await makeProject();
+  await writeFile(path.join(dir, '.ai', 'knowledge', 'domains', 'order.md'),
+    ['---', 'type: domain', 'name: 订单', 'summary: 无图', '---', '', '# 订单', '', '纯文字。', ''].join('\n'));
+
+  let called = false;
+  const result = await exportKnowledge({
+    targetDir: dir,
+    fetchImpl: async () => { called = true; throw new Error('不该被调用'); },
+  });
+  assert.equal(called, false, '没有图就不该去取 3.4MB 的 bundle');
+  assert.equal(result.mermaid, false);
+  assert.deepEqual(result.warnings.filter(item => item.includes('mermaid')), []);
 });

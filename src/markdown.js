@@ -75,3 +75,15 @@ export function escapeHtml(value) {
 function replaceAll(haystack, needle, replacement) {
   return haystack.split(`src="${needle}"`).join(`src="${replacement}"`);
 }
+
+const MERMAID_BLOCK = /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g;
+
+export function hasMermaid(html) {
+  return html.includes('class="language-mermaid"');
+}
+
+// marked 把 ```mermaid 渲染成 <pre><code class="language-mermaid">,
+// mermaid 运行时认的是 .mermaid 容器,这里做一次搬运;不改内容本身
+export function activateMermaid(html) {
+  return html.replace(MERMAID_BLOCK, (match, source) => `<pre class="mermaid">${source}</pre>`);
+}

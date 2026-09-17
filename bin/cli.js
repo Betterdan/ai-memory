@@ -303,9 +303,14 @@ kb
   .command('export')
   .description('把知识层、架构基线、需求定稿与技术设计导出为一个自包含 HTML')
   .option('--out <path>', '输出路径', DEFAULT_OUT)
+  .option('--mermaid <path>', '使用本地 mermaid.min.js,供离线或内网环境')
+  .option('--no-download', '不联网获取 mermaid;没有缓存时图降级为代码块')
   .action(async (opts) => {
-    const result = await exportKnowledge({ targetDir: process.cwd(), out: opts.out });
-    console.log(`已导出 ${result.pages.length} 页到 ${result.out}`);
+    const result = await exportKnowledge({
+      targetDir: process.cwd(), out: opts.out,
+      mermaidPath: opts.mermaid, allowDownload: opts.download !== false,
+    });
+    console.log(`已导出 ${result.pages.length} 页到 ${result.out}${result.mermaid ? ',含 mermaid 图' : ''}`);
     for (const warning of result.warnings) console.log(`  提示 ${warning}`);
     if (!result.pages.length) console.log('  知识层还是空的,打开后按页面提示补第一批内容');
   });

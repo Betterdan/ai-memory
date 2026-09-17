@@ -264,7 +264,7 @@ AGENTS.md + .agents/ + .codex/# Codex: skills and model-specific custom agents
 | `gate ready [--point <name>] [--hook]` | Structural readiness check of every in-progress requirement point; exits 1, or 2 in `--hook` mode so a PreToolUse hook can block implementation |
 | `gate contract [--staged] [--hook]` | Cross-checks each point s contract declaration against what actually changed; skips unless `interfaces.md` declares `entry_globs` and `contract_globs` |
 | `hooks install [--force]` / `hooks status` | Installs the tool-neutral git pre-commit gate, so Codex and other tools get enforcement too |
-| `kb export [--out <path>]` | Exports the knowledge layer, architecture baseline, finalized requirements and designs into one self-contained HTML — open it and see what the project is and how far it got |
+| `kb export [--out <path>] [--mermaid <path>] [--no-download]` | Exports the knowledge layer, architecture baseline, finalized requirements and designs into one self-contained HTML — open it and see what the project is and how far it got. Mermaid diagrams render offline; the pinned renderer is fetched once and cached |
 | `models show` | Show the selected profile and resolved tier for every workflow stage |
 | `models configure --profile <name>` | Select `inherit`, `balanced`, or `quality` without changing requirements, designs, or code |
 | `workflow prepare` | Create a local handoff manifest with hashes of formal input documents |

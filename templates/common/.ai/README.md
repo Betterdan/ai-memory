@@ -20,7 +20,7 @@
 | 改动对外接口 | `skills/interface-contract.md` + `docs/architecture/interfaces.md` |
 | 开始实现前 | 需求点须标为 `in-progress` 且定稿通过 `ai-memory gate ready` |
 | 改完提交前 | `ai-memory gate contract` 核对契约声明与实际改动是否一致 |
-| 想看项目全貌 | `ai-memory kb export` 生成 `knowledge.html`,双击打开 |
+| 想看项目全貌 | `ai-memory kb export` 生成 `knowledge.html`,双击打开;含 mermaid 图时首次需联网取一次渲染器 |
 | 了解系统现状 | `knowledge/overview.md` + 相关 `knowledge/entries/`、`knowledge/domains/` |
 | 写入知识 | `skills/knowledge-structure.md` 判断归属与 frontmatter,写完运行 `ai-memory kb build` 再 `kb check` |
 | 0→1、首次基线、重大重构 | `skills/project-inception.md` + 现有 `docs/architecture/` |

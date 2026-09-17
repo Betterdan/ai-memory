@@ -2,7 +2,8 @@ import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { buildHtml } from './export-html.js';
 import { parseFrontmatter } from './frontmatter.js';
-import { extractTitle, inlineImages, renderMarkdown } from './markdown.js';
+import { activateMermaid, extractTitle, hasMermaid, inlineImages, renderMarkdown } from './markdown.js';
+import { resolveMermaid } from './mermaid-asset.js';
 import { parsePoints } from './iterations.js';
 
 export { parsePoints };
@@ -22,7 +23,10 @@ const SOURCES = [
   { group: '开发约定', files: ['.ai/knowledge/conventions.md'] },
 ];
 
-export async function exportKnowledge({ targetDir, out = DEFAULT_OUT, now = new Date() }) {
+export async function exportKnowledge({
+  targetDir, out = DEFAULT_OUT, now = new Date(),
+  mermaidPath, allowDownload = true, fetchImpl,
+}) {
   const warnings = [];
   const pages = [];
   const seen = new Map();
@@ -48,12 +52,30 @@ export async function exportKnowledge({ targetDir, out = DEFAULT_OUT, now = new 
   }
 
   const overview = await buildOverview(targetDir, pages);
-  const html = buildHtml({ overview, pages, generatedAt: now.toISOString().slice(0, 10) });
+
+  // 只有内容里真有 mermaid 才去解析资源:没有图的项目不该为此联网,也不该背上 3.4MB
+  let mermaidSource;
+  if (pages.some(page => hasMermaid(page.html))) {
+    const resolved = await resolveMermaid({ localPath: mermaidPath, allowDownload, fetchImpl });
+    if (resolved.source) {
+      mermaidSource = resolved.source;
+      for (const page of pages) page.html = activateMermaid(page.html);
+    } else {
+      warnings.push(`${resolved.missing};图暂以代码块呈现`);
+    }
+  }
+
+  const html = buildHtml({ overview, pages, generatedAt: now.toISOString().slice(0, 10), mermaidSource });
   const destination = path.resolve(targetDir, out);
   await mkdir(path.dirname(destination), { recursive: true });
   await writeFile(destination, html);
 
-  return { out: path.relative(path.resolve(targetDir), destination).split(path.sep).join('/'), pages, warnings };
+  return {
+    out: path.relative(path.resolve(targetDir), destination).split(path.sep).join('/'),
+    pages,
+    warnings,
+    mermaid: Boolean(mermaidSource),
+  };
 }
 
 async function collectFiles(targetDir, source) {
