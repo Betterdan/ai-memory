@@ -45,7 +45,24 @@ Before writing, the CLI checks for duplicate template destinations, path travers
 An initialized project cannot be initialized again. A newer CLI first uses `update --dry-run` to identify versions and user modifications. `update --yes` applies only additions and baseline-matching safe updates, aborting before any write when merge or review items exist.
 `update` never touches user-owned files. When a release changes how user knowledge is laid out, `update` reports the pending migration and `ai-memory migrate --dry-run` / `--yes` performs it as a separate, explicit step — run `update` first, then `migrate`. Migration is one-way: once it raises `schemaVersion`, older CLI versions refuse to operate on the project. If a migration fails midway, `schemaVersion` is left untouched so the command can simply be run again.
 
+## What gets enforced
+
+The workflow is written down in `.ai/skills/`, but writing something down does not make it happen. These four points are mechanical: they run on their own and fail with an exit code.
+
+| When | Mechanism | Behaviour |
+| --- | --- | --- |
+| Before implementation | `PreToolUse` → `gate ready` | Blocks the edit (exit 2) when a requirement point marked `in-progress` has an incomplete final spec, and hands the reasons back to the model. Nothing is blocked while no point carries that status, and edits under `.ai/` and `docs/` always pass — otherwise fixing the requirement itself would deadlock. |
+| End of session | `Stop` → `gate contract` | Blocks once when a point's contract declaration contradicts what actually changed: "no external interface" while entry-point code moved, or "contract diff confirmed" while no contract file did. `stop_hook_active` keeps a misconfiguration from trapping the session. |
+| Before commit | git `pre-commit`, installed with `hooks install` | Runs `gate ready`, `gate contract` and `kb check` together. Claude Code gets its enforcement from hooks; Codex and other tools have no equivalent mechanism, so this is how they get theirs. |
+| After writing knowledge | `kb check` | Frontmatter, internal links, dangling domain and decision references, stale indexes — exit 1 on any of them. |
+
+Both gates are plain text and file checks: milliseconds, zero tokens, no model call. They catch omissions and vagueness, never whether the content is right.
+
+What stays a written convention: judging the risk tier, deciding when to split a requirement set, working through critic findings one by one, deciding where a piece of knowledge belongs. Those need to understand the content, so a mechanical check cannot do them.
+
 ## Versions and compatibility
+
+The full development record of the v0.8.0–v0.11.0 round — every requirement point, why R5/R6/R10 were split, and the defects that only surfaced once it ran — is in [`docs/evolution-r1-r10b.md`](docs/evolution-r1-r10b.md).
 
 ### v0.11.0 — one file that shows what the project is and how far it got
 

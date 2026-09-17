@@ -45,7 +45,24 @@ npx @betterdanlins/ai-memory models configure --profile balanced
 已初始化项目不能重新运行 `init`;新版 CLI 先通过 `update --dry-run` 识别版本和用户修改。`update --yes` 只应用新增和基线哈希匹配的安全更新,存在合并/审查项时在写入前整体拒绝。
 `update` 永远不碰用户资产。当某个版本改变了用户知识的组织方式时,`update` 只报告待执行的迁移,由 `ai-memory migrate --dry-run` / `--yes` 作为独立步骤执行——先 `update`,后 `migrate`。迁移是单向的:`schemaVersion` 一旦提升,旧版 CLI 将拒绝操作该项目。迁移中途失败时 `schemaVersion` 保持不变,直接重跑即可。
 
+## 什么时候会被拦住
+
+流程写在 `.ai/skills/` 里,但写下来不等于会被执行。下面四处是机械的:它们自己运行,不合格就以退出码失败。
+
+| 时机 | 机制 | 行为 |
+| --- | --- | --- |
+| 开工前 | `PreToolUse` → `gate ready` | 标为 `in-progress` 的需求点定稿不完整时,以退出码 2 阻塞该次编辑,并把原因喂回模型。没有任何点处于该状态时不拦截;`.ai/` 与 `docs/` 下的编辑始终放行——否则连去修需求文档都会被挡住。 |
+| 会话结束 | `Stop` → `gate contract` | 需求点的契约声明与实际改动不一致时阻塞一次:声明「不涉及对外接口」却碰了入口代码,或声明「契约 diff 已确认」却没有任何契约文件变更。`stop_hook_active` 保证配置写错也不会把会话卡在结束不了的循环里。 |
+| 提交前 | git `pre-commit`,用 `hooks install` 安装 | `gate ready`、`gate contract` 与 `kb check` 三项齐跑。Claude Code 的强制来自 hook;Codex 等工具没有等价机制,这是它们获得强制的唯一途径。 |
+| 写完知识 | `kb check` | frontmatter、内部链接、悬空领域与决策引用、索引是否过期——任一命中退出码 1。 |
+
+两道门禁都是纯文本与文件检查:几毫秒、零 token、不调模型。它们堵的是漏写与含糊,不判断内容对错。
+
+仍然是文字约定的部分:风险等级判断、何时拆分需求集合、critic 质疑的逐条处理、知识归属判断。这些需要理解内容,机械检查做不了。
+
 ## 版本与兼容性
+
+v0.8.0–v0.11.0 这一轮的完整开发记录——每个需求点、R5/R6/R10 为什么拆、以及只有跑起来才暴露的缺陷——见 [`docs/evolution-r1-r10b.md`](docs/evolution-r1-r10b.md)。
 
 ### v0.11.0 —— 一个文件看清项目全貌与进度
 
