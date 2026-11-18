@@ -13,9 +13,10 @@ const LAUNCHER = path.join(TEMPLATES, 'common', '.ai', 'hooks', 'gate.mjs');
 const tempDirs = createTempDirs();
 afterEach(() => tempDirs.cleanup());
 
-// 假 CLI:把收到的参数、stdin 与工作目录写进文件,以退出码 2 结束,便于核对转发是否原样
+// 假 CLI:把收到的参数、stdin 与工作目录写进文件,以退出码 2 结束,便于核对转发是否原样。
+// 用 CommonJS 写法:旁边没有 type: module,Node 20 不会自动识别 ESM 语法
 const FAKE_CLI = `
-import { writeFileSync, readFileSync } from 'node:fs';
+const { writeFileSync, readFileSync } = require('node:fs');
 let input = '';
 try { input = readFileSync(0, 'utf8'); } catch {}
 writeFileSync(process.env.FAKE_OUT, JSON.stringify({ args: process.argv.slice(2), input, cwd: process.cwd() }));
