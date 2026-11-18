@@ -13,6 +13,9 @@ const RELATED_CONTRACTS = 'related-contracts';
 
 export { parseFrontmatter };
 
+// 领域页上 kb build 负责的区块;缺了标记 build 会静默跳过,由 kb check 报告
+export const DOMAIN_BLOCKS = [RELATED_ENTRIES, RELATED_CONTRACTS];
+
 const REQUIRED = {
   entry: ['group', 'form', 'summary'],
   domain: ['name', 'summary'],

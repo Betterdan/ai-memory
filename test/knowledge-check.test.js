@@ -164,3 +164,20 @@ test('校验是只读的:运行前后目录树逐字节不变', async () => {
   assert.ok(result.problems.length > 0);
   assert.deepEqual(await snapshot(dir), before, 'kb check 不得写任何文件');
 });
+
+test('领域页缺少生成区块标记时被报告,否则 kb build 会静默跳过', async () => {
+  const dir = await makeProject();
+  await write(dir, '.ai/knowledge/entries/orders.md', ENTRY);
+  await write(dir, '.ai/knowledge/domains/orders.md', DOMAIN.replace(
+    /<!-- ai-memory:generated:related-contracts:start -->\n<!-- ai-memory:generated:related-contracts:end -->\n/, ''));
+  await write(dir, '.ai/knowledge/domains/bare.md', lines(
+    '---', 'type: domain', 'name: 支付', 'summary: 无标记', '---', '', '# 支付'));
+  await applyKnowledgeBuild({ targetDir: dir, plan: await planKnowledgeBuild({ targetDir: dir }) });
+
+  const result = await checkKnowledge({ targetDir: dir });
+  const text = messages(result);
+  assert.match(text, /domains\/orders\.md — 缺少生成区块 related-contracts/);
+  assert.ok(!/orders\.md — 缺少生成区块 related-entries/.test(text), '已有的区块不报');
+  assert.match(text, /domains\/bare\.md — 缺少生成区块 related-entries、related-contracts/);
+  assert.ok(kinds(result).includes('缺少生成区块'));
+});

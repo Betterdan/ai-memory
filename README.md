@@ -54,7 +54,7 @@ The workflow is written down in `.ai/skills/`, but writing something down does n
 | Before implementation | `PreToolUse` → `gate ready` | Blocks the edit (exit 2) when a requirement point marked `in-progress` has an incomplete final spec, and hands the reasons back to the model. Nothing is blocked while no point carries that status, and edits under `.ai/` and `docs/` always pass — otherwise fixing the requirement itself would deadlock. |
 | End of session | `Stop` → `gate contract` | Blocks once when a point's contract declaration contradicts what actually changed: "no external interface" while entry-point code moved, or "contract diff confirmed" while no contract file did. `stop_hook_active` keeps a misconfiguration from trapping the session. |
 | Before commit | git `pre-commit`, installed with `hooks install` | Runs `gate ready`, `gate contract` and `kb check` together. Claude Code gets its enforcement from hooks; Codex and other tools have no equivalent mechanism, so this is how they get theirs. |
-| After writing knowledge | `kb check` | Frontmatter, internal links, dangling domain and decision references, stale indexes — exit 1 on any of them. |
+| After writing knowledge | `kb check` | Frontmatter, internal links, dangling domain and decision references, domain pages missing their generated blocks, stale indexes — exit 1 on any of them. |
 
 Both gates are plain text and file checks: milliseconds, zero tokens, no model call. They catch omissions and vagueness, never whether the content is right.
 
@@ -313,7 +313,7 @@ AGENTS.md + .agents/ + .codex/# Codex: skills and model-specific custom agents
 | `migrate --dry-run` | Preview the Schema migration of user-owned assets without writing anything |
 | `migrate --yes` | Run the migration; `schemaVersion` is raised only after every change is written |
 | `kb build [--dry-run]` | Regenerate the knowledge index and domain cross-views from page frontmatter; only rewrites generated blocks |
-| `kb check` | Read-only validation of frontmatter, internal links, dangling references, and index staleness; exits 1 on any problem |
+| `kb check` | Read-only validation of frontmatter, internal links, dangling references, missing generated blocks, and index staleness; exits 1 on any problem |
 | `gate ready [--point <name>] [--hook]` | Structural readiness check of every in-progress requirement point; exits 1, or 2 in `--hook` mode so a PreToolUse hook can block implementation |
 | `gate contract [--staged] [--hook]` | Cross-checks each point s contract declaration against what actually changed; skips unless `interfaces.md` declares `entry_globs` and `contract_globs` |
 | `hooks install [--force]` / `hooks status` | Installs the tool-neutral git pre-commit gate, so Codex and other tools get enforcement too |

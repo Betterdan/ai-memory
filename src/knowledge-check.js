@@ -1,6 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { planKnowledgeBuild, scanKnowledge } from './knowledge-index.js';
+import { hasGeneratedBlock } from './generated-blocks.js';
+import { DOMAIN_BLOCKS, planKnowledgeBuild, scanKnowledge } from './knowledge-index.js';
 
 const KNOWLEDGE = '.ai/knowledge';
 const LINK = /\[[^\]]*\]\(([^)]+)\)/g;
@@ -17,6 +18,17 @@ export async function checkKnowledge({ targetDir }) {
       if (!domainNames.has(name)) {
         problems.push({ kind: '悬空领域引用', message: `${entry.rel} — domains 指向不存在的领域「${name}」` });
       }
+    }
+  }
+
+  for (const domain of pages.domain) {
+    const body = await readFile(path.join(targetDir, ...domain.rel.split('/')), 'utf8');
+    const missing = DOMAIN_BLOCKS.filter(block => !hasGeneratedBlock(body, block));
+    if (missing.length) {
+      problems.push({
+        kind: '缺少生成区块',
+        message: `${domain.rel} — 缺少生成区块 ${missing.join('、')},kb build 不会更新它;按 domains/README.md 的模板补上标记`,
+      });
     }
   }
 

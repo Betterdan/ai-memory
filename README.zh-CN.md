@@ -54,7 +54,7 @@ npx @betterdanlins/ai-memory models configure --profile balanced
 | 开工前 | `PreToolUse` → `gate ready` | 标为 `in-progress` 的需求点定稿不完整时,以退出码 2 阻塞该次编辑,并把原因喂回模型。没有任何点处于该状态时不拦截;`.ai/` 与 `docs/` 下的编辑始终放行——否则连去修需求文档都会被挡住。 |
 | 会话结束 | `Stop` → `gate contract` | 需求点的契约声明与实际改动不一致时阻塞一次:声明「不涉及对外接口」却碰了入口代码,或声明「契约 diff 已确认」却没有任何契约文件变更。`stop_hook_active` 保证配置写错也不会把会话卡在结束不了的循环里。 |
 | 提交前 | git `pre-commit`,用 `hooks install` 安装 | `gate ready`、`gate contract` 与 `kb check` 三项齐跑。Claude Code 的强制来自 hook;Codex 等工具没有等价机制,这是它们获得强制的唯一途径。 |
-| 写完知识 | `kb check` | frontmatter、内部链接、悬空领域与决策引用、索引是否过期——任一命中退出码 1。 |
+| 写完知识 | `kb check` | frontmatter、内部链接、悬空领域与决策引用、领域页缺少生成区块、索引是否过期——任一命中退出码 1。 |
 
 两道门禁都是纯文本与文件检查:几毫秒、零 token、不调模型。它们堵的是漏写与含糊,不判断内容对错。
 
@@ -313,7 +313,7 @@ AGENTS.md + .agents/ + .codex/# Codex:skills 与分层自定义 agents
 | `migrate --dry-run` | 预览用户资产的 Schema 迁移,不写任何文件 |
 | `migrate --yes` | 执行迁移;全部变更写入成功后才提升 `schemaVersion` |
 | `kb build [--dry-run]` | 按知识页 frontmatter 重新生成索引与领域页横向视图;只重写生成区块 |
-| `kb check` | 只读校验 frontmatter、内部链接、悬空引用与索引是否过期;有问题时退出码 1 |
+| `kb check` | 只读校验 frontmatter、内部链接、悬空引用、生成区块是否齐全与索引是否过期;有问题时退出码 1 |
 | `gate ready [--point <名>] [--hook]` | 检查进行中需求点定稿的结构就绪度;退出码 1,`--hook` 模式为 2 以便 PreToolUse 阻塞实现 |
 | `gate contract [--staged] [--hook]` | 核对需求点的契约声明与实际改动是否一致;`interfaces.md` 未填 globs 时跳过 |
 | `hooks install [--force]` / `hooks status` | 安装跨工具的 git pre-commit 门禁,让 Codex 等工具也有强制 |
