@@ -39,6 +39,8 @@ npx @betterdanlins/ai-memory update --yes
 npx @betterdanlins/ai-memory models configure --profile balanced
 ```
 
+**For the gates to actually run, the CLI must be callable.** Running `init` through `npx` leaves nothing installed; install it globally with `npm i -g @betterdanlins/ai-memory`, or in the project with `npm i -D @betterdanlins/ai-memory`. When the CLI cannot be found, the Claude Code hooks warn once per session and let the edit through, and the git gate prints a warning and lets the commit through — never blocking you, but never failing silently either.
+
 Nothing is ever overwritten silently: existing files are asked about one by one (interactive) or skipped (`--yes`).
 An invalid, non-directory, or unreadable `--import` project path fails explicitly. If the project directory is valid but an individual memory file is missing, the CLI falls back to its template and reports that fallback in the summary.
 Before writing, the CLI checks for duplicate template destinations, path traversal, and symbolic links, then reads and renders every planned file. If an actual filesystem write fails midway, the error summary lists both written and not-yet-written files.
@@ -64,9 +66,16 @@ What stays a written convention: judging the risk tier, deciding when to split a
 
 The full development record of the v0.8.0–v0.11.0 round — every requirement point, why R5/R6/R10 were split, and the defects that only surfaced once it ran — is in [`docs/evolution-r1-r10b.md`](docs/evolution-r1-r10b.md).
 
-### v0.11.2 — wiki export fixes, a Linux migration fix and a kb check gap
+### v0.11.3 — gates no longer fail silently
 
-> v0.11.1 was tagged but never published to npm; its changes ship in this release.
+> v0.11.2 was tagged but never published to npm; its changes ship in this release.
+
+- The hooks and the git gate used to call `npx --no-install ai-memory`. A project initialized with `npx`, as the README suggests, has no local install, so npx exited with 1 — and Claude Code only blocks on 2. **The gates silently let everything through**, and every edit waited about 2.5 seconds. Every PHP or Go project without a `package.json` was affected.
+- A new framework-owned file, `.ai/hooks/gate.mjs`, looks for the CLI via `AI_MEMORY_CLI`, then a project-local install, then a global install on `PATH`, and runs it directly with node (about 0.7 seconds), passing the blocking exit code through unchanged.
+- When the CLI cannot be found, it lets the action through with a clear warning: once per session as a Claude Code `systemMessage`, and on the terminal for the git gate.
+- `init` and `hooks install` print the install command when the CLI is not callable; `hooks status` recognizes an old npx-based pre-commit and tells you to refresh it.
+
+### v0.11.2 — wiki export fixes, a Linux migration fix and a kb check gap
 
 - Pages with non-ASCII (e.g. Chinese) file names can now be opened, refreshed and bookmarked directly. Browsers hand over a percent-encoded hash, which never matched the page id, so every such link fell back to the home page.
 - Relative links between pages (such as `../domains/order.md` in an entry page) are rewritten into in-page jumps, so clicking them switches pages and the back button works. Links to files that are not exported (contracts, source code) and external links are left untouched.
@@ -244,6 +253,17 @@ contract_globs: [docs/api/**]
 ```
 
 The git gate is opt-in: run `ai-memory hooks install` to enable it, `ai-memory hooks status` to check. An existing `pre-commit` is never overwritten without `--force`.
+
+### Upgrade from v0.11.x to v0.11.3
+
+```bash
+npm i -g @betterdanlins/ai-memory@0.11.3   # or npm i -D in the project; the gates depend on it
+ai-memory update --dry-run
+ai-memory update --yes
+ai-memory hooks status                     # if you installed the git gate: rerun hooks install --force when it reports an old one
+```
+
+No migration. `update` adds `.ai/hooks/gate.mjs` and refreshes `.claude/settings.json` and `pre-commit.sample`. **If you customized `settings.json`, the dry-run reports `merge`**: replace the two `npx --no-install ai-memory gate …` commands with the template's `node "$CLAUDE_PROJECT_DIR/.ai/hooks/gate.mjs" gate …`.
 
 ### Upgrade from v0.10.0 to v0.11.0
 

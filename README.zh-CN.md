@@ -39,6 +39,8 @@ npx @betterdanlins/ai-memory update --yes
 npx @betterdanlins/ai-memory models configure --profile balanced
 ```
 
+**要让门禁真正生效,CLI 必须可以被调用。** 用 `npx` 运行 init 不会留下安装;请全局安装 `npm i -g @betterdanlins/ai-memory`,或在项目内 `npm i -D @betterdanlins/ai-memory`。调不到 CLI 时,Claude Code 的 hook 会在每个会话提醒一次后放行,git 门禁会在终端提示后放行——不会挡住你,但也不会悄悄失效。
+
 绝不静默覆盖:已存在的文件会逐个询问(交互式),或直接跳过(`--yes`)。
 `--import` 指向的项目目录不存在、不是目录或不可读时会直接报错;目录有效但某个记忆文件缺失时会回退到默认模板,并在执行摘要中明确提示。
 生成前会检查重复模板目标、路径越界和符号链接;模板读取与渲染全部通过后才开始写入。若实际磁盘写入中途失败,错误摘要会列出已经写入和尚未写入的文件。
@@ -64,12 +66,17 @@ npx @betterdanlins/ai-memory models configure --profile balanced
 
 v0.8.0–v0.11.0 这一轮的完整开发记录——每个需求点、R5/R6/R10 为什么拆、以及只有跑起来才暴露的缺陷——见 [`docs/evolution-r1-r10b.md`](docs/evolution-r1-r10b.md)。
 
+### v0.11.3 —— 门禁不再静默失效
+
+> v0.11.2 只打了 tag、没有发布到 npm,其内容并入本版。
+
+- 此前 hook 与 git 门禁经 `npx --no-install ai-memory` 调用。按 README 用 `npx` 初始化的项目里没有本地安装,npx 以退出码 1 失败,而 Claude Code 只把 2 当阻塞——**门禁静默放行**,每次编辑还多等约 2.5 秒。PHP、Go 等没有 `package.json` 的项目全部中招。
+- 新增受管文件 `.ai/hooks/gate.mjs`:按 `AI_MEMORY_CLI` → 项目内安装 → PATH 上的全局安装查找 CLI,找到后直接用 node 执行(约 0.7 秒),阻塞退出码原样透传。
+- 找不到 CLI 时放行但明确提示:Claude Code 里每个会话以 systemMessage 提醒一次,git 门禁在终端打印警告。
+- `init` 与 `hooks install` 在调不到 CLI 时直接给出安装命令;`hooks status` 能识别经 npx 调用的旧版 pre-commit 并提示更新。
+
 ### v0.11.2 —— wiki 导出修复、Linux 迁移修复与 kb check 补漏
 
-> v0.11.1 只打了 tag、没有发布到 npm,其内容并入本版。
-
-- 中文文件名的页面可以直接打开、刷新和收藏了。此前浏览器给出的地址是百分号编码的,匹配不上页面 id,一律退回首页。
-- 页面之间的相对链接(如入口页里的 `../domains/订单.md`)导出后改为页内跳转,点了就切到对应页;浏览器后退也能回到上一页。指向未导出文件(契约、源码)的链接和外链保持原样。
 - Linux 上迁移中途失败时,现在同样会提示「schemaVersion 未提升,修复后可重跑」。此前路径中间组件是文件时 Linux 报 `ENOTDIR` 而非 `ENOENT`,错误在预检阶段裸抛,越过了这层说明;数据安全不受影响。
 - `kb check` 新增一类问题「缺少生成区块」:领域页缺了 `related-entries` / `related-contracts` 标记时,`kb build` 会静默跳过该页,现在会被报出来。
 - 依赖升级:`marked` ^18.1.1、`@inquirer/prompts` ^8.7.3。
@@ -244,6 +251,17 @@ contract_globs: [docs/api/**]
 ```
 
 git 门禁是可选的:`ai-memory hooks install` 启用,`ai-memory hooks status` 查看。已存在的 `pre-commit` 不加 `--force` 绝不覆盖。
+
+### 从 v0.11.x 升级到 v0.11.3
+
+```bash
+npm i -g @betterdanlins/ai-memory@0.11.3   # 或项目内 npm i -D;门禁靠它才能生效
+ai-memory update --dry-run
+ai-memory update --yes
+ai-memory hooks status                     # 装过 git 门禁的项目:报告旧版时再运行 hooks install --force
+```
+
+不需要迁移。`update` 会新增 `.ai/hooks/gate.mjs` 并更新 `.claude/settings.json` 与 `pre-commit.sample`;**改过 `settings.json` 的项目会报 `merge`**,把其中两条 `npx --no-install ai-memory gate …` 命令换成模板里的 `node "$CLAUDE_PROJECT_DIR/.ai/hooks/gate.mjs" gate …` 即可。
 
 ### 从 v0.10.0 升级到 v0.11.0
 
