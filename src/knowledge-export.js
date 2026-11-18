@@ -51,6 +51,8 @@ export async function exportKnowledge({
     }
   }
 
+  rewriteLinks(pages);
+
   const overview = await buildOverview(targetDir, pages);
 
   // 只有内容里真有 mermaid 才去解析资源:没有图的项目不该为此联网,也不该背上 3.4MB
@@ -76,6 +78,26 @@ export async function exportKnowledge({
     warnings,
     mermaid: Boolean(mermaidSource),
   };
+}
+
+// 单文件里不存在 .md 源文件:指向已导出页面的相对链接改成页内跳转,
+// 没导出的文件(契约、源码等)和外链保持原样
+function rewriteLinks(pages) {
+  const bySource = new Map(pages.map(page => [page.source, page.id]));
+  for (const page of pages) {
+    const base = path.posix.dirname(page.source);
+    page.html = page.html.replace(/href="([^"]+)"/g, (match, href) => {
+      if (/^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('//') || href.startsWith('#') || href.startsWith('/')) return match;
+      let target;
+      try {
+        target = decodeURIComponent(href.split('#')[0].split('?')[0]);
+      } catch {
+        return match;
+      }
+      const id = bySource.get(path.posix.normalize(path.posix.join(base, target)));
+      return id ? `href="#${id}"` : match;
+    });
+  }
 }
 
 async function collectFiles(targetDir, source) {

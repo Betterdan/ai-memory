@@ -4,6 +4,7 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import vm from 'node:vm';
 import { exportKnowledge, parsePoints } from '../src/knowledge-export.js';
 import { IMAGE_LIMIT, extractTitle, inlineImages, renderMarkdown } from '../src/markdown.js';
 import { scaffold } from '../src/scaffold.js';
@@ -316,4 +317,58 @@ test('内容里没有 mermaid 时完全不解析资源,也不联网', async () =
   assert.equal(called, false, '没有图就不该去取 3.4MB 的 bundle');
   assert.equal(result.mermaid, false);
   assert.deepEqual(result.warnings.filter(item => item.includes('mermaid')), []);
+});
+
+// 把导出页里的路由脚本放进极简假 DOM 里真跑一遍,只模拟它用到的那几个 API
+function runRouter(html, hash) {
+  const ids = [...html.matchAll(/<article id="([^"]+)" class="page"/g)].map(match => match[1]);
+  const pages = ids.map(id => ({ id, hidden: true, textContent: '' }));
+  const listeners = {};
+  const nav = {
+    querySelectorAll: () => [],
+    addEventListener: () => {},
+  };
+  const document = {
+    getElementById: id => (id === 'nav' ? nav : null),
+    querySelectorAll: selector => (selector === '.page' ? pages : []),
+  };
+  const window = {
+    scrollTo: () => {},
+    addEventListener: (name, fn) => { listeners[name] = fn; },
+  };
+  const location = { hash };
+  const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1];
+  vm.runInNewContext(script, { document, window, location, history: { replaceState: () => {} } });
+  const visible = () => pages.filter(page => !page.hidden).map(page => page.id);
+  return { visible, navigate(next) { location.hash = next; listeners.hashchange?.(); } };
+}
+
+test('中文页面 id 经浏览器编码的 hash 仍能直接打开', async () => {
+  const dir = await makeProject();
+  await exportKnowledge({ targetDir: dir, allowDownload: false });
+  const html = await read(dir, '.ai/knowledge.html');
+  const id = 'docs-requirements-v1-2-0-final-导出-批量';
+  assert.ok(html.includes(`<article id="${id}"`));
+
+  const router = runRouter(html, `#${encodeURIComponent(id)}`);
+  assert.deepEqual(router.visible(), [id], '刷新或直接打开链接不应回到首页');
+  router.navigate('#home');
+  assert.deepEqual(router.visible(), ['home'], '页内 hash 变化需要切换页面');
+});
+
+test('指向已导出页面的相对链接改写为页内跳转,其余链接原样保留', async () => {
+  const dir = await makeProject();
+  await write(dir, '.ai/knowledge/entries/orders-api.md', lines(
+    '---', 'type: entry', 'group: 订单 API', 'form: API 分组', 'summary: 下单', 'domains: [订单]', '---',
+    '', '# 订单 API', '',
+    '见 [订单](../domains/order.md)、[批量导出](../../../docs/requirements/v1.2.0/final/%E5%AF%BC%E5%87%BA-%E6%89%B9%E9%87%8F.md#目标)。',
+    '契约在 [orders.yaml](../../../docs/api/orders.yaml),外部见 [官网](https://example.com)。'));
+  await exportKnowledge({ targetDir: dir, allowDownload: false });
+  const html = await read(dir, '.ai/knowledge.html');
+
+  assert.ok(html.includes('href="#ai-knowledge-domains-order"'), '领域页链接应改为页内跳转');
+  assert.ok(html.includes('href="#docs-requirements-v1-2-0-final-导出-批量"'), '编码过的中文路径也要识别');
+  assert.ok(html.includes('href="../../../docs/api/orders.yaml"'), '没有导出的文件保持原链接');
+  assert.ok(html.includes('href="https://example.com"'), '外链保持原样');
+  assert.ok(!html.includes('order.md"'), '不应残留指向 .md 源文件的链接');
 });

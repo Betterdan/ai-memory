@@ -267,7 +267,16 @@ const SCRIPT = `
     });
   });
 
-  show((location.hash||'#home').slice(1));
+  // 浏览器给出的 hash 是百分号编码的,中文 id 不解码就永远匹配不上
+  function current(){
+    var raw=(location.hash||'#home').slice(1);
+    try{ return decodeURIComponent(raw); }catch(err){ return raw; }
+  }
+
+  // 页内链接改写成了 #id,点击只改 hash,需要据此切页;浏览器后退同理
+  window.addEventListener('hashchange',function(){ show(current()); });
+
+  show(current());
 })();
 `;
 
