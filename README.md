@@ -64,6 +64,12 @@ What stays a written convention: judging the risk tier, deciding when to split a
 
 The full development record of the v0.8.0–v0.11.0 round — every requirement point, why R5/R6/R10 were split, and the defects that only surfaced once it ran — is in [`docs/evolution-r1-r10b.md`](docs/evolution-r1-r10b.md).
 
+### v0.11.1 — two fixes to the wiki export
+
+- Pages with non-ASCII (e.g. Chinese) file names can now be opened, refreshed and bookmarked directly. Browsers hand over a percent-encoded hash, which never matched the page id, so every such link fell back to the home page.
+- Relative links between pages (such as `../domains/order.md` in an entry page) are rewritten into in-page jumps, so clicking them switches pages and the back button works. Links to files that are not exported (contracts, source code) and external links are left untouched.
+- No `update` or `migrate` needed; just run `kb export` again.
+
 ### v0.11.0 — one file that shows what the project is and how far it got
 
 - Adds `ai-memory kb export`: the knowledge layer, the architecture baseline, finalized requirement points and technical designs all render into a single self-contained HTML file. Open it directly — no server, no build step, no network.
@@ -237,8 +243,8 @@ The git gate is opt-in: run `ai-memory hooks install` to enable it, `ai-memory h
 ### Upgrade from v0.10.0 to v0.11.0
 
 ```bash
-npx @betterdanlins/ai-memory@0.11.0 update --dry-run
-npx @betterdanlins/ai-memory@0.11.0 update --yes
+npx @betterdanlins/ai-memory@0.11.1 update --dry-run
+npx @betterdanlins/ai-memory@0.11.1 update --yes
 ```
 
 No migration, and — unlike the previous release — no hook file to merge: `schemaVersion` stays at 2 and `.claude/settings.json` is untouched.
@@ -246,7 +252,7 @@ No migration, and — unlike the previous release — no hook file to merge: `sc
 Then generate the wiki:
 
 ```bash
-npx @betterdanlins/ai-memory@0.11.0 kb export
+npx @betterdanlins/ai-memory@0.11.1 kb export
 ```
 
 The output lands at `.ai/knowledge.html`. It is a generated artifact: commit it if you want teammates to open it from the repository, ignore it if you would rather regenerate on demand — the framework does not decide for you.

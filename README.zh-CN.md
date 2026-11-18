@@ -64,6 +64,12 @@ npx @betterdanlins/ai-memory models configure --profile balanced
 
 v0.8.0–v0.11.0 这一轮的完整开发记录——每个需求点、R5/R6/R10 为什么拆、以及只有跑起来才暴露的缺陷——见 [`docs/evolution-r1-r10b.md`](docs/evolution-r1-r10b.md)。
 
+### v0.11.1 —— wiki 导出的两处修复
+
+- 中文文件名的页面可以直接打开、刷新和收藏了。此前浏览器给出的地址是百分号编码的,匹配不上页面 id,一律退回首页。
+- 页面之间的相对链接(如入口页里的 `../domains/订单.md`)导出后改为页内跳转,点了就切到对应页;浏览器后退也能回到上一页。指向未导出文件(契约、源码)的链接和外链保持原样。
+- 无需 `update` 或 `migrate`,重新运行 `kb export` 即可。
+
 ### v0.11.0 —— 一个文件看清项目全貌与进度
 
 - 新增 `ai-memory kb export`:把知识层、架构基线、需求点定稿与技术设计导出为一个自包含 HTML,双击打开即可——不需要服务器、不需要构建、不需要网络。
@@ -237,8 +243,8 @@ git 门禁是可选的:`ai-memory hooks install` 启用,`ai-memory hooks status`
 ### 从 v0.10.0 升级到 v0.11.0
 
 ```bash
-npx @betterdanlins/ai-memory@0.11.0 update --dry-run
-npx @betterdanlins/ai-memory@0.11.0 update --yes
+npx @betterdanlins/ai-memory@0.11.1 update --dry-run
+npx @betterdanlins/ai-memory@0.11.1 update --yes
 ```
 
 不需要迁移,而且与上一版不同,这次没有需要人工合并的 hook 文件:`schemaVersion` 仍为 2,`.claude/settings.json` 不受影响。
@@ -246,7 +252,7 @@ npx @betterdanlins/ai-memory@0.11.0 update --yes
 然后生成 wiki:
 
 ```bash
-npx @betterdanlins/ai-memory@0.11.0 kb export
+npx @betterdanlins/ai-memory@0.11.1 kb export
 ```
 
 产物在 `.ai/knowledge.html`。它是生成物:想让别人从仓库里直接打开就提交它,想用时再生成就忽略它——框架不替你决定。
