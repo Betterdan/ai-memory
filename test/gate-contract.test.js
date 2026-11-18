@@ -221,3 +221,16 @@ test('非 git 仓库时 hooks install 明确报错', async () => {
   assert.equal(result.installed, false);
   assert.match(result.message, /不是 git 仓库/);
 });
+
+test('hooks status 识别 v0.11.2 及以前经 npx 调用的旧版门禁', async () => {
+  const dir = await makeRepo();
+  await writeFile(path.join(dir, '.git', 'hooks', 'pre-commit'),
+    '#!/bin/sh\n# ai-memory\nnpx --no-install ai-memory gate ready || exit 1\n');
+  const status = await gitHookStatus({ targetDir: dir });
+  assert.equal(status.installed, true);
+  assert.equal(status.outdated, true);
+  assert.match(status.message, /hooks install --force/);
+
+  await installGitHook({ targetDir: dir, force: true });
+  assert.equal((await gitHookStatus({ targetDir: dir })).outdated, false);
+});

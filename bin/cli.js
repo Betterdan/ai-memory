@@ -11,7 +11,7 @@ import {
 import { applyMigration, planMigration } from '../src/migrate.js';
 import { gateContract } from '../src/gate-contract.js';
 import { gateReady, isHookAllowedPath } from '../src/gate-ready.js';
-import { gitHookStatus, installGitHook } from '../src/git-hooks.js';
+import { CLI_HINT, gateCliReachable, gitHookStatus, installGitHook } from '../src/git-hooks.js';
 import { DEFAULT_OUT, exportKnowledge } from '../src/knowledge-export.js';
 import { checkKnowledge } from '../src/knowledge-check.js';
 import { applyKnowledgeBuild, planKnowledgeBuild } from '../src/knowledge-index.js';
@@ -127,6 +127,7 @@ program
     if (r.fallback.length) for (const d of r.fallback) console.log(`  导入源缺失,使用模板 ${d}`);
     if (r.skipped.length) for (const d of r.skipped) console.log(`  跳过 ${d}`);
     console.log('下一步:打开项目让 agent 读 .ai/README.md;把项目命令补进 CLAUDE.md/AGENTS.md 的 user 区块。');
+    if (!gateCliReachable({ targetDir })) console.log(CLI_HINT);
   });
 
 const models = program.command('models').description('查看或配置阶段模型路由');
@@ -403,6 +404,7 @@ hooks
   .action(async (opts) => {
     const result = await installGitHook({ targetDir: process.cwd(), force: Boolean(opts.force) });
     console.log(result.message);
+    if (result.installed && !gateCliReachable({ targetDir: process.cwd() })) console.log(CLI_HINT);
     if (!result.installed) process.exitCode = 1;
   });
 

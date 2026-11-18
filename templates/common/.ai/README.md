@@ -37,7 +37,7 @@
 - `config/model-routing.json` — 可选阶段模型策略;默认 `inherit` 不改变旧行为
 - `knowledge/` — 当前知识:overview 概览、entries/ 入口页、domains/ 领域页、decisions/ 决策记录、iterations 迭代记录、conventions 开发约定
 - `memory/` — 过程记录与用户级记忆:MEMORY.md 索引、session-log 流水、user-profile/feedback
-- `hooks/` — 跨工具门禁样例;`ai-memory hooks install` 显式安装,框架不会替你装
+- `hooks/` — 门禁启动器 `gate.mjs`(hook 与 pre-commit 经它定位 CLI)与跨工具门禁样例;`ai-memory hooks install` 显式安装,框架不会替你装
 - `knowledge.html` — `kb export` 生成的自包含项目 wiki(含架构基线、需求定稿与技术设计);是生成物,要不要进 Git 由你决定
 - `runs/` — 本地交接清单和阶段回执;默认不进入 Git
 - `skills/` — 方法论层:risk-levels、interface-contract、knowledge-structure、project-inception、requirements-flow、feature-design、delivery-readiness、model-routing、code-review、critic、memory-update

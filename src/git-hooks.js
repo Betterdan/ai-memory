@@ -1,5 +1,17 @@
+import { spawnSync } from 'node:child_process';
 import { access, chmod, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+
+const LAUNCHER = '.ai/hooks/gate.mjs';
+
+export const CLI_HINT = '提示:门禁需要可调用的 ai-memory CLI,否则 hook 与 pre-commit 只会提示并放行。'
+  + '安装:npm i -g @betterdanlins/ai-memory(或项目内 npm i -D @betterdanlins/ai-memory)';
+
+// 用项目自己的启动器探测,与 hook 运行时的查找逻辑保持一致
+export function gateCliReachable({ targetDir }) {
+  const result = spawnSync(process.execPath, [path.join(targetDir, ...LAUNCHER.split('/')), '--probe'], { stdio: 'ignore' });
+  return result.status === 0;
+}
 
 const SAMPLE = '.ai/hooks/pre-commit.sample';
 const TARGET = '.git/hooks/pre-commit';
@@ -38,13 +50,15 @@ export async function gitHookStatus({ targetDir }) {
   }
   const body = await readFile(destination, 'utf8');
   const managed = body.includes('ai-memory');
-  return {
-    installed: true,
-    managed,
-    message: managed
-      ? `${TARGET} 已安装 ai-memory 门禁`
-      : `${TARGET} 已存在但不是 ai-memory 的门禁;需要手工合并`,
-  };
+  // v0.11.2 及以前的样例经 npx 调用,项目里没有本地安装时会静默放行
+  const outdated = managed && body.includes('npx --no-install ai-memory');
+  let message = `${TARGET} 已存在但不是 ai-memory 的门禁;需要手工合并`;
+  if (managed) {
+    message = outdated
+      ? `${TARGET} 是旧版门禁,找不到本地安装时会静默放行;运行 ai-memory hooks install --force 更新`
+      : `${TARGET} 已安装 ai-memory 门禁`;
+  }
+  return { installed: true, managed, outdated, message };
 }
 
 async function exists(filePath) {

@@ -367,3 +367,18 @@ test('gate contract 的 hook 模式:不一致时 2,防循环时 0', async () => 
   const allowed = await guarded;
   assert.equal(allowed.stderr.trim(), '', 'stop_hook_active 为 true 时必须安静放行');
 });
+
+test('init 后若门禁调不到 CLI,明确提示安装方式', async () => {
+  const dir = await temp('aim-cli-probe-');
+  const env = { ...process.env, PATH: '', Path: '', AI_MEMORY_CLI: '' };
+  const { stdout } = await run(process.execPath, [CLI, 'init', '--name', 'demo', '--tools', 'claude', '--yes'], { cwd: dir, env });
+  assert.match(stdout, /门禁需要可调用的 ai-memory CLI/);
+  assert.match(stdout, /npm i -g @betterdanlins\/ai-memory/);
+
+  await mkdir(path.join(dir, '.git'));
+  const { stdout: missing } = await run(process.execPath, [CLI, 'hooks', 'install'], { cwd: dir, env });
+  assert.match(missing, /门禁需要可调用的 ai-memory CLI/);
+
+  const { stdout: found } = await run(process.execPath, [CLI, 'hooks', 'install', '--force'], { cwd: dir, env: { ...env, AI_MEMORY_CLI: CLI } });
+  assert.ok(!found.includes('门禁需要可调用的 ai-memory CLI'), 'CLI 可用时不提示');
+});

@@ -151,7 +151,9 @@ test('settings.json 用 PreToolUse 自动触发且不因缺命令而卡死', asy
   }
   const command = pre[0].hooks[0].command;
   assert.match(command, /gate ready --hook/);
-  assert.match(command, /--no-install/, 'hook 不得在编辑时联网安装依赖');
+  assert.ok(command.includes('.ai/hooks/gate.mjs'), 'hook 须经启动脚本定位 CLI');
+  assert.ok(!/npx/.test(raw), 'npx 找不到本地安装时静默失效且每次编辑多花数秒');
+  assert.ok(settings.hooks.Stop[0].hooks[0].command.includes('.ai/hooks/gate.mjs" gate contract --hook'));
   assert.ok(settings.hooks.Stop && settings.hooks.PreCompact, '既有提醒 hook 不得丢失');
 });
 
@@ -160,5 +162,8 @@ test('跨工具兜底样例存在且默认不安装', async () => {
   assert.match(sample, /gate ready/);
   assert.match(sample, /kb check/);
   assert.match(sample, /exit 0/, 'ai-memory 不可用时必须放行');
+  assert.ok(sample.includes('GATE=".ai/hooks/gate.mjs"') && sample.includes('"$GATE" --probe'), '放行前须能判断 CLI 是否可用');
+  assert.match(sample, />&2/, '放行时须在终端提示门禁未执行,不能静默');
+  assert.ok(!/npx/.test(sample));
   assert.ok(sample.includes('.git/hooks/pre-commit'), '需给出安装方式');
 });
