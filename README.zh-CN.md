@@ -64,11 +64,16 @@ npx @betterdanlins/ai-memory models configure --profile balanced
 
 v0.8.0–v0.11.0 这一轮的完整开发记录——每个需求点、R5/R6/R10 为什么拆、以及只有跑起来才暴露的缺陷——见 [`docs/evolution-r1-r10b.md`](docs/evolution-r1-r10b.md)。
 
-### v0.11.1 —— wiki 导出的两处修复
+### v0.11.2 —— wiki 导出修复、Linux 迁移修复与 kb check 补漏
+
+> v0.11.1 只打了 tag、没有发布到 npm,其内容并入本版。
 
 - 中文文件名的页面可以直接打开、刷新和收藏了。此前浏览器给出的地址是百分号编码的,匹配不上页面 id,一律退回首页。
 - 页面之间的相对链接(如入口页里的 `../domains/订单.md`)导出后改为页内跳转,点了就切到对应页;浏览器后退也能回到上一页。指向未导出文件(契约、源码)的链接和外链保持原样。
-- 无需 `update` 或 `migrate`,重新运行 `kb export` 即可。
+- Linux 上迁移中途失败时,现在同样会提示「schemaVersion 未提升,修复后可重跑」。此前路径中间组件是文件时 Linux 报 `ENOTDIR` 而非 `ENOENT`,错误在预检阶段裸抛,越过了这层说明;数据安全不受影响。
+- `kb check` 新增一类问题「缺少生成区块」:领域页缺了 `related-entries` / `related-contracts` 标记时,`kb build` 会静默跳过该页,现在会被报出来。
+- 依赖升级:`marked` ^18.1.1、`@inquirer/prompts` ^8.7.3。
+- 无需 `update` 或 `migrate`;重新运行 `kb export`,并建议跑一次 `kb check`。
 
 ### v0.11.0 —— 一个文件看清项目全貌与进度
 
@@ -243,8 +248,8 @@ git 门禁是可选的:`ai-memory hooks install` 启用,`ai-memory hooks status`
 ### 从 v0.10.0 升级到 v0.11.0
 
 ```bash
-npx @betterdanlins/ai-memory@0.11.1 update --dry-run
-npx @betterdanlins/ai-memory@0.11.1 update --yes
+npx @betterdanlins/ai-memory@0.11.2 update --dry-run
+npx @betterdanlins/ai-memory@0.11.2 update --yes
 ```
 
 不需要迁移,而且与上一版不同,这次没有需要人工合并的 hook 文件:`schemaVersion` 仍为 2,`.claude/settings.json` 不受影响。
@@ -252,7 +257,7 @@ npx @betterdanlins/ai-memory@0.11.1 update --yes
 然后生成 wiki:
 
 ```bash
-npx @betterdanlins/ai-memory@0.11.1 kb export
+npx @betterdanlins/ai-memory@0.11.2 kb export
 ```
 
 产物在 `.ai/knowledge.html`。它是生成物:想让别人从仓库里直接打开就提交它,想用时再生成就忽略它——框架不替你决定。
