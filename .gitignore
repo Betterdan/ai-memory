@@ -13,3 +13,8 @@ docs/superpowers/
 /AGENTS.md
 /CLAUDE.md
 /.claude/settings.local.json
+
+# Locally installed third-party agent skills (npx skills), not part of the package
+/.agents/
+/.claude/skills/
+/skills-lock.json
