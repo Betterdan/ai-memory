@@ -41,7 +41,7 @@ export async function assertNoSymlinkPath(targetDir, destPath) {
     try {
       stats = await lstat(current);
     } catch (err) {
-      if (err.code === 'ENOENT') return;
+      if (err.code === 'ENOENT' || err.code === 'ENOTDIR') return;
       throw err;
     }
     if (stats.isSymbolicLink()) {

@@ -37,6 +37,16 @@ test('assertNoSymlinkPath 允许普通现有组件和不存在的后续组件', 
   await assertNoSymlinkPath(root, path.join(root, 'existing', 'missing', 'file.md'));
 });
 
+// 中间组件是文件时 Windows 报 ENOENT、Linux 报 ENOTDIR;两者都意味着后面不可能有符号链接,
+// 应同样放行,让真正的写入去失败并带上调用方的上下文(如迁移的「schemaVersion 未提升」)
+test('assertNoSymlinkPath 在中间组件是文件时跨平台一致地放行', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'ai-memory-safe-path-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, 'blocker'), 'file');
+
+  await assertNoSymlinkPath(root, path.join(root, 'blocker', 'child.md'));
+});
+
 test('assertNoSymlinkPath 拒绝目标目录之外的路径', async () => {
   const root = path.resolve('target');
   await assert.rejects(
