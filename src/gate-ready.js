@@ -2,6 +2,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parsePoints } from './iterations.js';
 import { readSelection, selectionError } from './worktree-selection.js';
+import { readIndex } from './git-index.js';
 
 const ITERATIONS = '.ai/knowledge/iterations.md';
 const REQUIREMENTS = 'docs/requirements';
@@ -13,16 +14,17 @@ const EMPTY_MARKS = ['无', '(无)', '（无）', '没有'];
 // hook 不拦截这些前缀:需求没写好时要能去修需求,挡住就死锁
 export const HOOK_ALLOWED_PREFIXES = ['.ai/', 'docs/'];
 
-export async function gateReady({ targetDir, point }) {
-  const points = point ? [point] : await inProgressPoints(targetDir);
+export async function gateReady({ targetDir, point, staged = false }) {
+  const index = staged ? await readIndex(targetDir) : null;
+  const points = point ? [point] : await inProgressPoints(targetDir, index);
   const results = [];
   for (const name of points) {
-    const located = await locateFinal(targetDir, name);
+    const located = await locateFinal(targetDir, name, index);
     if (located.error) {
       results.push({ point: name, file: null, failures: [located.error] });
       continue;
     }
-    const body = await readFile(path.join(targetDir, ...located.rel.split('/')), 'utf8');
+    const body = index ? await index.read(located.rel) : await readFile(path.join(targetDir, ...located.rel.split('/')), 'utf8');
     results.push({ point: name, file: located.rel, failures: checkReadiness(body) });
   }
   return { results, blocked: results.filter(item => item.failures.length) };
@@ -85,19 +87,33 @@ export function contractDeclaration(body) {
   return null;
 }
 
-export async function inProgressPoints(targetDir) {
-  const body = await readOptional(path.join(targetDir, ...ITERATIONS.split('/')));
+export async function inProgressPoints(targetDir, index = null) {
+  const file = path.join(targetDir, ...ITERATIONS.split('/'));
+  const body = index ? await index.read(ITERATIONS) : await readOptional(file);
   const selected = await readSelection(targetDir);
   const points = body === undefined ? [] : parsePoints(body);
   if (selected) {
     const matches = points.filter(point => point.point === selected);
-    if (matches.length !== 1) throw selectionError(`活动需求「${selected}」不存在或不唯一;请重新选择或清除`);
-    return matches[0].status === 'in-progress' ? [selected] : [];
+    if (matches.length !== 1) throw selectionError(`活动需求「${selected}」${index ? '在暂存区' : ''}不存在或不唯一;请${index ? '暂存迭代状态或' : ''}重新选择或清除`);
   }
-  return points.filter(point => point.status === 'in-progress').map(point => point.point);
+  const activeNames = items => items.filter(item => item.status === 'in-progress' && (!selected || item.point === selected)).map(item => item.point);
+  const active = activeNames(points);
+  if (index && (!selected || !active.length)) {
+    const working = await readOptional(file);
+    const missing = working === undefined ? [] : activeNames(parsePoints(working)).filter(name => !active.includes(name));
+    if (missing.length) throw new Error(`请先暂存进行中的需求状态:${missing.join('、')}`);
+  }
+  return active;
 }
 
-export async function locateFinal(targetDir, point) {
+export async function locateFinal(targetDir, point, index = null) {
+  if (index) {
+    const matches = index.files.filter(rel => rel.startsWith(`${REQUIREMENTS}/`) && rel.endsWith(`/final/${point}.md`)
+      && rel.slice(REQUIREMENTS.length + 1).split('/').length === 3);
+    if (!matches.length) return { error: `暂存区找不到定稿 ${REQUIREMENTS}/<版本>/final/${point}.md` };
+    if (matches.length > 1) return { error: `暂存区多个版本目录下都有 ${point}.md:${matches.join('、')}` };
+    return { rel: matches[0] };
+  }
   const root = path.join(targetDir, ...REQUIREMENTS.split('/'));
   let versions;
   try {

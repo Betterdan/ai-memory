@@ -354,7 +354,7 @@ AGENTS.md + .agents/ + .codex/# Codex: skills and model-specific custom agents
 | `migrate --yes` | Run the migration; `schemaVersion` is raised only after every change is written |
 | `kb build [--dry-run]` | Regenerate the knowledge index and domain cross-views from page frontmatter; only rewrites generated blocks |
 | `kb check` | Read-only validation of frontmatter, internal links, dangling references, missing generated blocks, and index staleness; exits 1 on any problem |
-| `gate ready [--point <name>] [--hook]` | Structural readiness check of the selected point or all in-progress points; exits 1, or 2 in `--hook` mode so a PreToolUse hook can block implementation |
+| `gate ready [--point <name>] [--staged] [--hook]` | Structural readiness check of the selected point or all in-progress points; `--staged` reads iteration status and requirements from the Git index |
 | `gate trace` | Read-only verification of numbered acceptance records and evidence files for accepted and done points; exits 1 on problems |
 | `gate contract [--staged] [--hook]` | Cross-checks each point s contract declaration against what actually changed; skips unless `interfaces.md` declares `entry_globs` and `contract_globs` |
 | `gate contract --base <ref> --point <name>` | Checks committed changes from the merge base to HEAD for one requirement point; fails if the base or merge base is unavailable |
@@ -373,14 +373,12 @@ Commit the initialized framework to your base branch, then create a branch and w
 
 Run `ai-memory hooks install` in a worktree to install the hook at Git's effective path; `hooks status` recognizes `core.hooksPath`. Hooks are normally shared by linked worktrees, so installation and `--force` can affect the others. Existing hooks are not overwritten by default; merge them manually where appropriate. The hook checks the worktree that triggers the commit. If that worktree cannot find the CLI, it warns and allows the commit; configure a local or global installation there.
 
+The updated pre-commit sample reads iteration status, finalized requirements and interface configuration from the Git index. Stage the documents needed by the commit. An active requirement found only in the working tree must be staged before the commit can pass. Projects without interface configuration can still skip contract checks. Framework updates leave installed hooks in place. Run `hooks status` to find older samples, then merge or reinstall after checking the effect on other worktrees and updating their CLI. `kb check` still reads knowledge files from the working tree.
+
 After marking the current point `in-progress`, run `ai-memory worktree select --point <name>` in each worktree. Default readiness and contract gates then check only that point. The selection is stored in the worktree's ignored `.ai/runs/active-point.json`; use `worktree status` to inspect it and `worktree clear` to restore checks for all active points. Existing projects without a selection keep their previous behavior. The default gates skip a selected point when it is no longer in progress, and block if the selection is invalid, missing or ambiguous.
 
 Before merging, run `ai-memory gate contract --base dev --point <name>` to inspect committed changes from the merge base to HEAD. Check uncommitted changes separately with the ordinary or `--staged` mode. `--base` cannot be combined with `--hook`. Replace `dev` with the actual base; the requirement and interface configuration are read from the current worktree. Resolve overlapping iteration, session or knowledge changes manually; after merging, run `kb build` and `kb check` and review the diff.
 
-### `init` options
-
-| Option | Description |
-| --- | --- |
 ### Existing code and wikis
 
 Run `ai-memory init --adopt --yes` at the root of a project that has not used ai-memory. For the selected tools, adoption adds a managed block to `AGENTS.md` / `CLAUDE.md`, keeps frontmatter at the top and the original body in the user block, and writes upgrade metadata. Existing user files and `.claude/settings.json` are preserved. Integrate hooks manually if you keep existing Claude settings. Existing block markers, unclosed frontmatter, unsafe paths, and other managed file conflicts are reported before writes. For initialized projects, use `update --dry-run`.
@@ -389,16 +387,20 @@ Follow `.ai/skills/project-adoption.md` to review rules one by one. Reuse equiva
 
 Build the first knowledge baseline from code, tests, and the existing wiki. Record the code revision, evidence, coverage, and open questions. Write verified findings to `.ai/knowledge/` and `docs/architecture/`, then run `kb build`, `kb check`, and `kb export`. Initialization scaffolds the framework. The agent reviews the original wiki within the agreed scope and keeps it as evidence.
 
+### `init` options
+
+| Option | Description |
+| --- | --- |
 | `--name <name>` | Project name (defaults to the current directory name) |
 | `--stack <desc>` | Tech-stack description |
 | `--tools <list>` | Comma-separated adapters to enable: `claude`, `codex` |
 | `--model-profile <profile>` | `inherit` (default), `balanced`, or `quality`; `--yes` never opts into costly routing implicitly |
 | `--import <path>` | Import `user-profile` / `feedback` from an existing project |
+| `--adopt` | Adopt an existing project while preserving entry file text, user files, and existing Claude settings |
 | `--yes` | Non-interactive: fill defaults, skip on any conflict |
 
 ## How it works
 
-| `--adopt` | Adopt an existing project while preserving entry file text, user files, and existing Claude settings |
 The generator is a small set of focused modules:
 
 - **manifest** — walks the `common` / `claude` / `codex` template groups, keeping only the groups whose tools are enabled, and produces a flat `{src, dest}` list; duplicate destinations fail before writing and list every source.

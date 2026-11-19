@@ -352,7 +352,7 @@ AGENTS.md + .agents/ + .codex/# Codex:skills 与分层自定义 agents
 | `migrate --yes` | 执行迁移;全部变更写入成功后才提升 `schemaVersion` |
 | `kb build [--dry-run]` | 按知识页 frontmatter 重新生成索引与领域页横向视图;只重写生成区块 |
 | `kb check` | 只读校验 frontmatter、内部链接、悬空引用、生成区块是否齐全与索引是否过期;有问题时退出码 1 |
-| `gate ready [--point <名>] [--hook]` | 检查所选或全部进行中需求点的结构就绪度;退出码 1,`--hook` 模式为 2 以便 PreToolUse 阻塞实现 |
+| `gate ready [--point <名>] [--staged] [--hook]` | 检查所选或全部进行中需求点的结构就绪度；`--staged` 使用 Git 暂存区的迭代状态与定稿 |
 | `gate trace` | 只读核验已验收及已生效需求点的 AC 记录和证据文件;有问题时退出码 1 |
 | `gate contract [--staged] [--hook]` | 核对需求点的契约声明与实际改动是否一致;`interfaces.md` 未填 globs 时跳过 |
 | `gate contract --base <基线> --point <需求点>` | 只读检查共同祖先到当前 HEAD 的已提交差异；缺少基线或共同祖先时报错 |
@@ -371,14 +371,12 @@ AGENTS.md + .agents/ + .codex/# Codex:skills 与分层自定义 agents
 
 在任一 worktree 执行 `ai-memory hooks install` 可安装 Git 当前生效的 hook，`hooks status` 会识别 `core.hooksPath`。默认 hook 通常由同仓库的 worktree 共享：安装或 `--force` 覆盖会影响其他 worktree；已存在 hook 默认不覆盖，请按需手工合并。运行时检查触发提交的 worktree。如果该 worktree 找不到 CLI，门禁会提示并放行，需为它配置项目内或全局 CLI。
 
+新版 pre-commit 从暂存区读取需求状态、定稿和接口配置。提交前请将本次所需的文件一起暂存。只在工作区标为进行中的需求须先暂存才能通过门禁。没有配置接口规则的旧项目仍可跳过契约检查。框架更新会保留已安装的 hook，可运行 `hooks status` 检查旧样例，再核对对其他 worktree 的影响并更新其 CLI，之后手工合并或重新安装。`kb check` 仍检查工作区的知识文件。
+
 在每个 worktree 将当前需求登记为 `in-progress` 后，运行 `ai-memory worktree select --point <需求点>`，默认就绪和契约门禁只检查当前需求；选择仅存于该工作区被忽略的 `.ai/runs/active-point.json`。使用 `worktree status` 查看、`worktree clear` 恢复检查所有进行中的点。已有项目未选择时行为不变；所选点不再进行中时默认门禁跳过该点，配置损坏或所选点不存在/重名时阻塞并提示修正。
 
 合并前执行 `ai-memory gate contract --base dev --point <需求点>`，检查共同祖先至当前 HEAD 的已提交差异；未提交内容仍需普通模式或 `--staged` 检查。`--base` 不能与 `--hook` 同用。替换 `dev` 为实际基线；定稿和接口配置从当前工作区读取。多个需求改动同一份迭代、会话或知识文件时，合并冲突须结合实际内容人工解决，合并后重新执行 `kb build`、`kb check` 并审查 diff。
 
-### `init` 选项
-
-| 选项 | 说明 |
-| --- | --- |
 ### 已有代码与 Wiki 的项目
 
 在尚未使用 ai-memory 的项目根运行 `ai-memory init --adopt --yes`。该模式为所选工具的 `AGENTS.md` / `CLAUDE.md` 加入受管区块，保留顶部的 frontmatter、将原正文留在 user 区块，并生成升级元数据。已有知识、架构等用户文件和 `.claude/settings.json` 保持原样；已有 Claude 设置的 hook 需人工合入。入口已有区块标记、frontmatter 未闭合、路径不安全或其他受管目标冲突时，在写入前报错。已初始化的项目使用 `update --dry-run`。
@@ -387,16 +385,20 @@ AGENTS.md + .agents/ + .codex/# Codex:skills 与分层自定义 agents
 
 按协议结合代码、测试和旧 Wiki 建立第一版知识基线，记录代码提交、来源、核验范围和待确认项。把已核验事实提炼进 `.ai/knowledge/` 和 `docs/architecture/`，再执行 `kb build`、`kb check` 和 `kb export`。初始化只生成框架，旧 Wiki 由 Agent 按范围核验，原文继续作为证据。
 
+### `init` 选项
+
+| 选项 | 说明 |
+| --- | --- |
 | `--name <name>` | 项目名(默认取当前目录名) |
 | `--stack <desc>` | 技术栈描述 |
 | `--tools <list>` | 逗号分隔的适配层:`claude`、`codex` |
 | `--model-profile <profile>` | `inherit`(默认)、`balanced` 或 `quality`;`--yes` 不会静默启用高成本路由 |
 | `--import <path>` | 从已有项目导入 `user-profile` / `feedback` |
+| `--adopt` | 接入已有项目，保留原入口正文、用户文件和已有 Claude 设置 |
 | `--yes` | 非交互模式:缺参用默认值,冲突一律跳过 |
 
 ## 工作原理
 
-| `--adopt` | 接入已有项目，保留原入口正文、用户文件和已有 Claude 设置 |
 生成器由一组职责明确的小模块构成:
 
 - **manifest** —— 遍历 `common` / `claude` / `codex` 模板组,只保留已启用工具对应的组,产出一份扁平的 `{src, dest}` 清单;重复目标会在写入前报错并列出来源。

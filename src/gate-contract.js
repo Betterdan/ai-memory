@@ -4,6 +4,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { parseFrontmatter } from './frontmatter.js';
 import { contractDeclaration, inProgressPoints, locateFinal } from './gate-ready.js';
+import { readIndex } from './git-index.js';
 
 const run = promisify(execFile);
 const INTERFACES = 'docs/architecture/interfaces.md';
@@ -13,8 +14,13 @@ export async function gateContract({ targetDir, staged = false, base, point }) {
   if (base && !point) throw new Error('--base 需要通过 --point 指定需求点');
   if (point && (/[\\/]/.test(point) || point === '.' || point === '..')) throw new Error('需求点名称必须是文件名');
   const changed = await changedPaths(targetDir, staged, base);
-  const points = point ? [point] : await inProgressPoints(targetDir);
-  const config = await readInterfaceConfig(targetDir);
+  const index = staged && changed !== null ? await readIndex(targetDir) : null;
+  const points = point ? [point] : await inProgressPoints(targetDir, index);
+  const config = await readInterfaceConfig(targetDir, index);
+  if (index && points.length && !index.files.includes(INTERFACES)
+    && (changed.includes(INTERFACES) || !(await readInterfaceConfig(targetDir, null)).skip)) {
+    throw new Error(`暂存区缺少 ${INTERFACES};请先暂存本次提交使用的接口规则`);
+  }
   if (config.skip) return { skipped: config.skip, problems: [] };
   if (changed === null) return { skipped: '当前目录不是 git 仓库,或 git 不可用', problems: [] };
 
@@ -25,9 +31,9 @@ export async function gateContract({ targetDir, staged = false, base, point }) {
   const problems = [];
 
   for (const point of points) {
-    const located = await locateFinal(targetDir, point);
+    const located = await locateFinal(targetDir, point, index);
     if (located.error) { problems.push({ point, message: located.error }); continue; }
-    const body = await readFile(path.join(targetDir, ...located.rel.split('/')), 'utf8');
+    const body = index ? await index.read(located.rel) : await readFile(path.join(targetDir, ...located.rel.split('/')), 'utf8');
     const declared = contractDeclaration(body);
 
     if (declared === 'not-applicable' && touchedEntries.length) {
@@ -50,14 +56,15 @@ export async function gateContract({ targetDir, staged = false, base, point }) {
   return { skipped: null, problems, touchedEntries, touchedContracts };
 }
 
-async function readInterfaceConfig(targetDir) {
+async function readInterfaceConfig(targetDir, index) {
   let body;
   try {
-    body = await readFile(path.join(targetDir, ...INTERFACES.split('/')), 'utf8');
+    body = index ? await index.read(INTERFACES) : await readFile(path.join(targetDir, ...INTERFACES.split('/')), 'utf8');
   } catch (err) {
     if (err.code === 'ENOENT' || err.code === 'ENOTDIR') return { skip: `缺少 ${INTERFACES}` };
     throw err;
   }
+  if (body === undefined) return { skip: `暂存区缺少 ${INTERFACES}` };
   const parsed = parseFrontmatter(body);
   if (!parsed) {
     return { skip: `${INTERFACES} 没有 frontmatter;补上 entry_globs 与 contract_globs 后本门禁才生效` };
@@ -82,27 +89,17 @@ async function changedPaths(targetDir, staged, base) {
     }
   }
   // -uall:不加的话 git 会把未跟踪目录折叠成 `?? src/`,新增文件拿不到完整路径
-  const args = staged ? ['diff', '--cached', '--name-only'] : ['status', '--porcelain', '-uall'];
+  const args = staged ? ['diff', '--cached', '--name-only', '--no-renames', '-z', '--']
+    : ['status', '--porcelain', '-z', '-uall', '--no-renames'];
   let stdout;
   try {
     ({ stdout } = await run('git', args, { cwd: targetDir }));
-  } catch {
+  } catch (err) {
+    if (staged) throw new Error(`无法读取 Git 暂存改动: ${String(err.stderr ?? '').trim() || err.message}`, { cause: err });
     return null;
   }
-  const files = [];
-  for (const line of stdout.split('\n')) {
-    if (!line.trim()) continue;
-    const raw = staged ? line.trim() : line.slice(3).trim();
-    const renamed = raw.split(' -> ');
-    files.push(unquotePath(renamed[renamed.length - 1]));
-  }
-  return files;
-}
-
-function unquotePath(value) {
-  const trimmed = value.trim();
-  if (trimmed.startsWith('"') && trimmed.endsWith('"')) return trimmed.slice(1, -1);
-  return trimmed;
+  const files = stdout.split('\0').filter(Boolean);
+  return staged ? files : files.map(item => item.slice(3));
 }
 
 export function matchAny(globs, filePath) {

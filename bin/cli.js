@@ -351,6 +351,7 @@ gate
   .command('ready')
   .description('检查进行中的需求点定稿是否满足就绪标准;--hook 供 PreToolUse 自动触发')
   .option('--point <name>', '只检查指定需求点,默认按工作区选择或全部 in-progress 点检查')
+  .option('--staged', '读取 Git 暂存区中的需求状态和定稿')
   .option('--hook', 'hook 模式:读取 stdin 的工具输入,失败以退出码 2 阻塞')
   .action(async (opts) => {
     if (opts.hook) {
@@ -359,7 +360,7 @@ gate
         const input = await readStdin();
         const filePath = input ? JSON.parse(input)?.tool_input?.file_path : undefined;
         if (isHookAllowedPath(filePath)) return;
-        const { blocked } = await gateReady({ targetDir: process.cwd() });
+        const { blocked } = await gateReady({ targetDir: process.cwd(), staged: Boolean(opts.staged) });
         if (!blocked.length) return;
         console.error('[ai-memory] 需求点尚未就绪,先补齐定稿再开始实现:');
         for (const item of blocked) {
@@ -368,13 +369,14 @@ gate
         }
         process.exitCode = 2;
       } catch (err) {
-        console.error(`[ai-memory] 就绪门禁${err.code === 'ACTIVE_POINT_INVALID' ? '阻塞' : '跳过'}:${err.message}`);
-        if (err.code === 'ACTIVE_POINT_INVALID') process.exitCode = 2;
+        const block = err.code === 'ACTIVE_POINT_INVALID' || opts.staged;
+        console.error(`[ai-memory] 就绪门禁${block ? '阻塞' : '跳过'}:${err.message}`);
+        if (block) process.exitCode = 2;
       }
       return;
     }
 
-    const { results, blocked } = await gateReady({ targetDir: process.cwd(), point: opts.point });
+    const { results, blocked } = await gateReady({ targetDir: process.cwd(), point: opts.point, staged: Boolean(opts.staged) });
     if (!results.length) {
       console.log('没有进行中的需求点,无需检查');
       return;
@@ -415,8 +417,9 @@ gate
         for (const problem of result.problems) console.error(`  ${problem.point}:${problem.message}`);
         process.exitCode = 2;
       } catch (err) {
-        console.error(`[ai-memory] 契约门禁${err.code === 'ACTIVE_POINT_INVALID' ? '阻塞' : '跳过'}:${err.message}`);
-        if (err.code === 'ACTIVE_POINT_INVALID') process.exitCode = 2;
+        const block = err.code === 'ACTIVE_POINT_INVALID' || opts.staged;
+        console.error(`[ai-memory] 契约门禁${block ? '阻塞' : '跳过'}:${err.message}`);
+        if (block) process.exitCode = 2;
       }
       return;
     }

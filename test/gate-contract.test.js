@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { gateContract, matchGlob } from '../src/gate-contract.js';
+import { gateReady } from '../src/gate-ready.js';
 import { gitHookStatus, installGitHook } from '../src/git-hooks.js';
 import { scaffold } from '../src/scaffold.js';
 import { createTempDirs } from './temp-dirs.js';
@@ -165,6 +166,122 @@ test('--staged 只看暂存区,未暂存的改动不算', async () => {
   const afterAdd = await gateContract({ targetDir: dir, staged: true });
   assert.equal(afterAdd.problems.length, 1);
   assert.deepEqual(afterAdd.touchedEntries, ['src/api/order.js']);
+});
+
+test('就绪暂存模式不能用未暂存的定稿或需求状态放行提交', async () => {
+  const dir = await makeRepo({ point: null });
+  const iterations = path.join(dir, '.ai', 'knowledge', 'iterations.md');
+  const body = await readFile(iterations, 'utf8');
+  await writeFile(iterations, body.replace('|---|---|---|---|---|', '|---|---|---|---|---|\n| v1.0.0 | 新需求 | M | in-progress | 无 |'));
+  await touch(dir, 'docs/requirements/v1.0.0/final/新需求.md', FINAL('不涉及对外接口。'));
+  await assert.rejects(gateReady({ targetDir: dir, staged: true }), /暂存/);
+  await run(process.execPath, [CLI, 'worktree', 'select', '--point', '新需求'], { cwd: dir });
+  await assert.rejects(gateReady({ targetDir: dir, staged: true }), /暂存/);
+  await run('git', ['add', '.ai/knowledge/iterations.md'], { cwd: dir });
+  assert.ok((await gateReady({ targetDir: dir, staged: true })).blocked.length);
+  await run('git', ['add', 'docs/requirements/v1.0.0/final/新需求.md'], { cwd: dir });
+  assert.equal((await gateReady({ targetDir: dir, staged: true })).blocked.length, 0);
+  await touch(dir, 'docs/requirements/v1.0.0/final/新需求.md', FINAL(''));
+  assert.equal((await gateReady({ targetDir: dir, staged: true })).blocked.length, 0, '未暂存的定稿改动不改变本次提交');
+});
+
+test('契约暂存模式读取暂存区定稿,不能被未暂存内容覆盖', async () => {
+  const dir = await makeRepo({ declaration: '不涉及对外接口。' });
+  await touch(dir, 'docs/requirements/v1.0.0/final/改签名.md', FINAL('契约 diff 已确认。'));
+  await touch(dir, 'src/api/order.js');
+  await touch(dir, 'docs/api/order.yaml');
+  await run('git', ['add', 'src/api/order.js', 'docs/api/order.yaml'], { cwd: dir });
+  assert.match((await gateContract({ targetDir: dir, staged: true })).problems[0].message, /不涉及对外接口/);
+});
+
+test('契约暂存模式使用已暂存接口配置,忽略未暂存配置变更', async () => {
+  const dir = await makeRepo({ declaration: '不涉及对外接口。' });
+  const interfaces = path.join(dir, 'docs', 'architecture', 'interfaces.md');
+  await writeFile(interfaces, (await readFile(interfaces, 'utf8')).replace('entry_globs: [src/api/**]', 'entry_globs: []'));
+  await touch(dir, 'src/api/order.js');
+  await run('git', ['add', 'src/api/order.js'], { cwd: dir });
+  const result = await gateContract({ targetDir: dir, staged: true });
+  assert.match(result.problems[0].message, /不涉及对外接口/);
+});
+
+test('契约暂存模式能匹配中文入口并检查移出入口目录的旧路径', async () => {
+  const dir = await makeRepo({ declaration: '不涉及对外接口。' });
+  const config = 'docs/architecture/interfaces.md';
+  const entry = 'src/接口/下单.js';
+  const body = await readFile(path.join(dir, config), 'utf8');
+  await touch(dir, config, body.replace('src/api/**', 'src/接口/**'));
+  await touch(dir, entry);
+  await run('git', ['add', '--', config, entry], { cwd: dir });
+  assert.deepEqual((await gateContract({ targetDir: dir, staged: true })).touchedEntries, [entry]);
+  await run('git', ['commit', '-qm', 'entry baseline'], { cwd: dir });
+  await run('git', ['config', 'diff.renames', 'true'], { cwd: dir });
+  await run('git', ['mv', '--', entry, 'src/legacy.js'], { cwd: dir });
+  const result = await gateContract({ targetDir: dir, staged: true });
+  assert.deepEqual(result.touchedEntries, [entry]);
+  assert.match(result.problems[0].message, /不涉及对外接口/);
+});
+
+test('契约暂存模式报告暂存区缺少已配置的接口规则', async () => {
+  const dir = await makeRepo();
+  const config = 'docs/architecture/interfaces.md';
+  await touch(dir, 'src/api/order.js');
+  await run('git', ['add', 'src/api/order.js'], { cwd: dir });
+  await run('git', ['rm', '--cached', '--', config], { cwd: dir });
+  await assert.rejects(gateContract({ targetDir: dir, staged: true }), /暂存区缺少 docs\/architecture\/interfaces.md/);
+});
+
+test('两个暂存门禁一致处理本地活动需求,以已暂存的定稿为准', async () => {
+  const dir = await makeRepo();
+  const iterations = '.ai/knowledge/iterations.md';
+  await run(process.execPath, [CLI, 'worktree', 'select', '--point', '改签名'], { cwd: dir });
+  const body = await readFile(path.join(dir, iterations), 'utf8');
+  await touch(dir, iterations, body.split('\n').filter(line => !line.includes('| 改签名 |')).join('\n'));
+  assert.equal((await gateReady({ targetDir: dir, staged: true })).results.length, 1);
+
+  const untracked = await makeRepo({ point: null });
+  const previous = await readFile(path.join(untracked, iterations), 'utf8');
+  await touch(untracked, iterations, previous.replace('|---|---|---|---|---|', '|---|---|---|---|---|\n| v1.0.0 | 新需求 | M | in-progress | 无 |'));
+  await assert.rejects(gateContract({ targetDir: untracked, staged: true }), /暂存.*新需求/);
+});
+
+test('真实 worktree 提交不能依赖未暂存的需求文档', async () => {
+  const dir = await makeRepo({ point: null });
+  const root = await tempDirs.make('aim-index-hook-');
+  const work = path.join(root, 'feature');
+  await run('git', ['worktree', 'add', '-qb', 'feature/index', work], { cwd: dir });
+  const iterations = path.join(work, '.ai', 'knowledge', 'iterations.md');
+  const body = await readFile(iterations, 'utf8');
+  await writeFile(iterations, body.replace('|---|---|---|---|---|', '|---|---|---|---|---|\n| v1.0.0 | 新需求 | M | in-progress | 无 |'));
+  await touch(work, 'docs/requirements/v1.0.0/final/新需求.md', FINAL('不涉及对外接口。'));
+  await run(process.execPath, [CLI, 'worktree', 'select', '--point', '新需求'], { cwd: work });
+  const sample = '.ai/hooks/pre-commit.sample';
+  const sampleBody = await readFile(path.join(work, sample), 'utf8');
+  await touch(work, sample, sampleBody.replace(/\r?\n/g, '\r\n'));
+  const { installed } = await installGitHook({ targetDir: work });
+  assert.equal(installed, true);
+  const { stdout: hookPath } = await run('git', ['rev-parse', '--git-path', 'hooks/pre-commit'], { cwd: work });
+  const hook = path.resolve(work, hookPath.trim());
+  assert.ok(!(await readFile(hook, 'utf8')).includes('\r'), 'Git 必须能用 sh 执行共享 hook');
+  await touch(work, 'new-file.txt');
+  await run('git', ['add', 'new-file.txt'], { cwd: work });
+  const env = { ...process.env, AI_MEMORY_CLI: CLI };
+  const failure = await run('git', ['commit', '-qm', 'incomplete'], { cwd: work, env }).then(() => null, err => err);
+  assert.ok(failure);
+  assert.match(failure.stdout + failure.stderr, /暂存/);
+  await run('git', ['add', '.ai/knowledge/iterations.md', 'docs/requirements/v1.0.0/final/新需求.md'], { cwd: work });
+  await run('git', ['commit', '-qm', 'complete'], { cwd: work, env });
+});
+
+test('hooks status 提醒 launcher 旧样例仍读取工作区', async () => {
+  const dir = await makeRepo();
+  assert.equal((await installGitHook({ targetDir: dir })).installed, true);
+  const { stdout } = await run('git', ['rev-parse', '--git-path', 'hooks/pre-commit'], { cwd: dir });
+  const hook = path.resolve(dir, stdout.trim());
+  const body = await readFile(hook, 'utf8');
+  await writeFile(hook, body.replace('gate ready --staged', 'gate ready'), 'utf8');
+  const status = await gitHookStatus({ targetDir: dir });
+  assert.ok(status.installed && status.outdated);
+  assert.match(status.message, /暂存区/);
 });
 
 test('新增的未跟踪文件必须被发现,不能被 git 折叠成目录', async () => {

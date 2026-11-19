@@ -47,7 +47,7 @@ export async function installGitHook({ targetDir, force = false }) {
 
   await mkdir(path.dirname(destination), { recursive: true });
   try {
-    await writeFile(destination, sample, { flag: force ? 'w' : 'wx' });
+    await writeFile(destination, sample.replaceAll('\r\n', '\n'), { flag: force ? 'w' : 'wx' });
   } catch (err) {
     if (err.code === 'EEXIST') return { installed: false, message: `${destination} 已存在;确认可以覆盖后加 --force` };
     throw err;
@@ -65,12 +65,14 @@ export async function gitHookStatus({ targetDir }) {
   const body = await readFile(destination, 'utf8');
   const managed = body.includes('ai-memory');
   // v0.11.2 及以前的样例经 npx 调用,项目里没有本地安装时会静默放行
-  const outdated = managed && body.includes('npx --no-install ai-memory');
+  const legacyLauncher = managed && body.includes('npx --no-install ai-memory');
+  const readsWorkingTree = managed && /^\s*node\s+"\$GATE"\s+gate\s+ready\s+\|\|/m.test(body);
+  const outdated = legacyLauncher || readsWorkingTree;
   let message = `${destination} 已存在但不是 ai-memory 的门禁;需要手工合并`;
   if (managed) {
-    message = outdated
-      ? `${destination} 是旧版门禁,找不到本地安装时会静默放行;运行 ai-memory hooks install --force 更新`
-      : `${destination} 已安装 ai-memory 门禁`;
+    message = `${destination} 已安装 ai-memory 门禁`;
+    if (legacyLauncher) message = `${destination} 是旧版门禁,找不到本地安装时会静默放行;运行 ai-memory hooks install --force 更新`;
+    else if (readsWorkingTree) message = `${destination} 的就绪门禁仍读取工作区;请核对共享影响后合并新版样例,使其检查暂存区`;
   }
   return { installed: true, managed, outdated, message };
 }

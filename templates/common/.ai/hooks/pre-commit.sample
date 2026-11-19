@@ -20,6 +20,6 @@ if ! node "$GATE" --probe; then
   exit 0
 fi
 
-node "$GATE" gate ready || exit 1
+node "$GATE" gate ready --staged || exit 1
 node "$GATE" gate contract --staged || exit 1
 node "$GATE" kb check || exit 1
