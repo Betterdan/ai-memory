@@ -14,6 +14,14 @@
 
 S 级改动按 `.ai/skills/risk-levels.md` 的退出条件判断：只有项目状态真实变化时才写入，纯局部修复不写记忆。
 
+## Git worktree 并行开发
+
+- 多个需求从约定基线（例如 `dev`）分别创建分支与 worktree；在各自工作区维护当前需求的状态、需求文档与过程记录。将当前需求登记为唯一的 `in-progress` 后，用 `ai-memory worktree select --point <需求点>` 将就绪和契约门禁限定于该点；未选择时仍检查全部 `in-progress`。不要擅自修改其他需求状态。
+- 选择保存在当前工作区 `.ai/runs/active-point.json`，不进入 Git；需要切换时重新选择，`ai-memory worktree status` 查看，`ai-memory worktree clear` 恢复检查全部。所选点不再为 `in-progress` 时不会被默认门禁检查；配置损坏、点被删除或重名时门禁阻塞并要求修正。
+- 每个 worktree 的 `.ai/` 由该分支的文件决定，不会自动同步；未纳入 Git 的 `.ai/runs/` 回执只属于当前 worktree。不要用符号链接将多个 worktree 的用户资产连到一起。
+- 合并前在需求分支运行 `ai-memory gate contract --base dev --point <需求点>`；此检查只比较共同祖先到当前 HEAD 的已提交改动，工作区及暂存区另行检查。基线不是 `dev` 时明确替换为实际分支。
+- 合并或 rebase 出现 iterations、session-log 或知识页冲突时，结合两个需求的真实状态和验收证据人工处理，不丢弃任一方或自动猜测语义；合并后在目标分支执行 `ai-memory kb build`、`ai-memory kb check` 并审查 diff。
+
 ## 需求点落地后的知识合并
 
 需求点满足 `.ai/skills/risk-levels.md` 的退出条件但尚未发布或启用时，在 iterations 中标为 `accepted`；已验收不等于已生效。实际生效后才执行知识合并并标为 `done`。无需独立发布或启用的改动可以验收后直接进入 `done`。

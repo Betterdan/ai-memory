@@ -1,7 +1,7 @@
 import { afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +13,7 @@ import { createTempDirs } from './temp-dirs.js';
 
 const run = promisify(execFile);
 const TEMPLATES = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'templates');
+const CLI = path.join(path.dirname(TEMPLATES), 'bin', 'cli.js');
 const tempDirs = createTempDirs();
 afterEach(() => tempDirs.cleanup());
 
@@ -222,6 +223,25 @@ test('非 git 仓库时 hooks install 明确报错', async () => {
   assert.match(result.message, /不是 git 仓库/);
 });
 
+test('子目录不能意外向父仓库安装 hook', async () => {
+  const dir = await makeRepo();
+  const child = path.join(dir, 'nested');
+  await mkdir(child);
+  await scaffold({ templatesRoot: TEMPLATES, targetDir: child, vars: VARS, tools: [], onConflict: () => 'skip' });
+  const result = await installGitHook({ targetDir: child });
+  assert.equal(result.installed, false);
+  assert.match(result.message, /仓库根目录/);
+});
+
+test('经 junction 或符号链接进入仓库时可以识别真实根目录', async () => {
+  const dir = await makeRepo();
+  const parent = await tempDirs.make('aim-alias-');
+  const alias = path.join(parent, 'alias');
+  await symlink(dir, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  assert.equal((await installGitHook({ targetDir: alias })).installed, true);
+  assert.equal((await gitHookStatus({ targetDir: dir })).managed, true);
+});
+
 test('hooks status 识别 v0.11.2 及以前经 npx 调用的旧版门禁', async () => {
   const dir = await makeRepo();
   await writeFile(path.join(dir, '.git', 'hooks', 'pre-commit'),
@@ -233,4 +253,138 @@ test('hooks status 识别 v0.11.2 及以前经 npx 调用的旧版门禁', async
 
   await installGitHook({ targetDir: dir, force: true });
   assert.equal((await gitHookStatus({ targetDir: dir })).outdated, false);
+});
+
+test('关联 worktree 安装和检查共用 hook,不会覆盖已有 hook', async () => {
+  const dir = await makeRepo();
+  const work = path.join(await tempDirs.make('aim-linked-'), 'feature');
+  await run('git', ['worktree', 'add', '-qb', 'feature/test', work], { cwd: dir });
+  const result = await installGitHook({ targetDir: work });
+  assert.equal(result.installed, true);
+  assert.match(result.message, /共享/);
+  assert.equal((await gitHookStatus({ targetDir: dir })).managed, true);
+  assert.equal((await gitHookStatus({ targetDir: work })).managed, true);
+  assert.equal((await installGitHook({ targetDir: work })).installed, false);
+});
+
+test('共用 hook 提交时检查实际触发的 worktree 和暂存区', async () => {
+  const dir = await makeRepo();
+  const base = await tempDirs.make('aim-two-worktrees-');
+  const first = path.join(base, 'first');
+  const second = path.join(base, 'second');
+  await run('git', ['worktree', 'add', '-qb', 'feature/first', first], { cwd: dir });
+  await run('git', ['worktree', 'add', '-qb', 'feature/second', second], { cwd: dir });
+  await installGitHook({ targetDir: first });
+  const env = { ...process.env, AI_MEMORY_CLI: CLI };
+  await touch(first, 'src/api/order.js');
+  await run('git', ['add', 'src/api/order.js'], { cwd: first });
+  const failure = await run('git', ['commit', '-qm', 'bad'], { cwd: first, env }).then(() => null, err => err);
+  assert.ok(failure, '入口改动缺少契约时应阻止提交');
+  await touch(second, 'local.txt');
+  await run('git', ['add', 'local.txt'], { cwd: second });
+  await run('git', ['commit', '-qm', 'good'], { cwd: second, env });
+});
+
+test('自定义 hooksPath 的有效 hook 被安装和识别,已有内容不被覆盖', async () => {
+  const dir = await makeRepo();
+  await run('git', ['config', 'core.hooksPath', '.custom-hooks'], { cwd: dir });
+  await mkdir(path.join(dir, '.custom-hooks'));
+  const hook = path.join(dir, '.custom-hooks', 'pre-commit');
+  await writeFile(hook, '#!/bin/sh\n# custom\n');
+  assert.equal((await installGitHook({ targetDir: dir })).installed, false);
+  assert.match(await readFile(hook, 'utf8'), /custom/);
+  assert.equal((await gitHookStatus({ targetDir: dir })).managed, false);
+  assert.equal((await installGitHook({ targetDir: dir, force: true })).installed, true);
+  assert.equal((await gitHookStatus({ targetDir: dir })).managed, true);
+});
+
+test('基线对比检查已提交的需求分支,缺失基线报错', async () => {
+  const dir = await makeRepo({ declaration: '不涉及对外接口。' });
+  await run('git', ['branch', 'dev'], { cwd: dir });
+  await touch(dir, 'src/api/order.js');
+  await run('git', ['add', 'src/api/order.js'], { cwd: dir });
+  await run('git', ['commit', '-qm', 'feature'], { cwd: dir });
+  assert.equal((await gateContract({ targetDir: dir })).problems.length, 0);
+  const compared = await gateContract({ targetDir: dir, base: 'dev', point: '改签名' });
+  assert.equal(compared.problems.length, 1);
+  await assert.rejects(gateContract({ targetDir: dir, base: 'missing', point: '改签名' }), /基线/);
+  await assert.rejects(gateContract({ targetDir: dir, base: 'dev' }), /--point/);
+  await assert.rejects(gateContract({ targetDir: dir, base: 'dev', point: '改签名', staged: true }), /不能同时/);
+  const cliFailure = await run(process.execPath, [CLI, 'gate', 'contract', '--base', 'dev', '--point', '改签名'], { cwd: dir }).then(() => null, err => err);
+  assert.equal(cliFailure.code, 1);
+  assert.match(cliFailure.stdout, /不涉及对外接口/);
+  const missing = await run(process.execPath, [CLI, 'gate', 'contract', '--base', 'missing', '--point', '改签名'], { cwd: dir }).then(() => null, err => err);
+  assert.notEqual(missing.code, 0);
+  assert.match(missing.stderr, /基线/);
+  const hook = run(process.execPath, [CLI, 'gate', 'contract', '--base', 'missing', '--point', '改签名', '--hook'], { cwd: dir });
+  hook.child.stdin.end('{}');
+  const hookFailure = await hook.then(() => null, err => err);
+  assert.equal(hookFailure.code, 2);
+});
+
+test('不同 worktree 可选各自的活动需求,默认检查全部并可恢复', async () => {
+  const dir = await makeRepo({ declaration: '不涉及对外接口。' });
+  const iterations = path.join(dir, '.ai', 'knowledge', 'iterations.md');
+  await writeFile(iterations, (await readFile(iterations, 'utf8')).replace('| v1.0.0 | 改签名 | M | in-progress | 无 |', '| v1.0.0 | 改签名 | M | in-progress | 无 |\n| v1.0.0 | 另一个 | M | in-progress | 无 |'));
+  await run('git', ['add', '.ai/knowledge/iterations.md'], { cwd: dir });
+  await run('git', ['commit', '-qm', 'second point'], { cwd: dir });
+  const root = await tempDirs.make('aim-selection-');
+  const a = path.join(root, 'a'); const b = path.join(root, 'b');
+  await run('git', ['worktree', 'add', '-qb', 'selection/a', a], { cwd: dir });
+  await run('git', ['worktree', 'add', '-qb', 'selection/b', b], { cwd: dir });
+  await run(process.execPath, [CLI, 'worktree', 'select', '--point', '改签名'], { cwd: a });
+  const readyA = await run(process.execPath, [CLI, 'gate', 'ready'], { cwd: a });
+  assert.match(readyA.stdout, /就绪 改签名/);
+  const contractA = await run(process.execPath, [CLI, 'gate', 'contract'], { cwd: a });
+  assert.match(contractA.stdout, /契约声明与改动一致/);
+  const readyB = await run(process.execPath, [CLI, 'gate', 'ready'], { cwd: b }).then(() => null, err => err);
+  assert.match(readyB.stdout, /另一个/);
+  const contractB = await run(process.execPath, [CLI, 'gate', 'contract'], { cwd: b }).then(() => null, err => err);
+  assert.match(contractB.stdout, /另一个/);
+  await run(process.execPath, [CLI, 'worktree', 'select', '--point', '另一个'], { cwd: b });
+  assert.match((await run(process.execPath, [CLI, 'worktree', 'status'], { cwd: b })).stdout, /另一个/);
+  assert.match((await run(process.execPath, [CLI, 'worktree', 'status'], { cwd: a })).stdout, /改签名/);
+  await assert.rejects(run(process.execPath, [CLI, 'worktree', 'select', '--point', '不存在'], { cwd: a }));
+  assert.match((await run(process.execPath, [CLI, 'worktree', 'status'], { cwd: a })).stdout, /改签名/);
+  const selectedFile = path.join(a, '.ai', 'runs', 'active-point.json');
+  await run('git', ['check-ignore', '.ai/runs/active-point.json'], { cwd: a });
+  const iterA = path.join(a, '.ai', 'knowledge', 'iterations.md');
+  const progress = await readFile(iterA, 'utf8');
+  await writeFile(iterA, progress.replace('| 改签名 | M | in-progress |', '| 改签名 | M | accepted |'));
+  assert.match((await run(process.execPath, [CLI, 'gate', 'ready'], { cwd: a })).stdout, /没有进行中的需求点/);
+  await writeFile(iterA, progress);
+  await writeFile(selectedFile, '{invalid');
+  const invalid = run(process.execPath, [CLI, 'gate', 'ready', '--hook'], { cwd: a });
+  invalid.child.stdin.end('{}');
+  assert.equal((await invalid.then(() => null, err => err)).code, 2);
+  await writeFile(selectedFile, JSON.stringify({ point: '不存在' }));
+  const stale = run(process.execPath, [CLI, 'gate', 'contract', '--hook'], { cwd: a });
+  stale.child.stdin.end('{}');
+  assert.equal((await stale.then(() => null, err => err)).code, 2);
+  await run(process.execPath, [CLI, 'worktree', 'clear'], { cwd: a });
+  const restored = await run(process.execPath, [CLI, 'gate', 'ready'], { cwd: a }).then(() => null, err => err);
+  assert.match(restored.stdout, /另一个/);
+});
+
+test('两个需求在独立 worktree 开发,合并与 rebase 后按更新的基线检查', async () => {
+  const dir = await makeRepo({ declaration: '不涉及对外接口。' });
+  await run('git', ['branch', 'dev'], { cwd: dir });
+  const root = await tempDirs.make('aim-parallel-');
+  const first = path.join(root, 'first');
+  const second = path.join(root, 'second');
+  await run('git', ['worktree', 'add', '-qb', 'feature/a', first, 'dev'], { cwd: dir });
+  await run('git', ['worktree', 'add', '-qb', 'feature/b', second, 'dev'], { cwd: dir });
+  await touch(first, 'feature-a.txt', 'A');
+  await touch(second, 'src/api/b.js', 'B');
+  await run('git', ['add', 'feature-a.txt'], { cwd: first });
+  await run('git', ['commit', '-qm', 'feature a'], { cwd: first });
+  await run('git', ['add', 'src/api/b.js'], { cwd: second });
+  await run('git', ['commit', '-qm', 'feature b'], { cwd: second });
+  assert.equal((await gateContract({ targetDir: first, base: 'dev', point: '改签名' })).problems.length, 0);
+  assert.equal((await gateContract({ targetDir: second, base: 'dev', point: '改签名' })).problems.length, 1);
+  await run('git', ['checkout', '-q', 'dev'], { cwd: dir });
+  await run('git', ['merge', '--ff-only', 'feature/a'], { cwd: dir });
+  await run('git', ['rebase', 'dev'], { cwd: second });
+  assert.equal((await gateContract({ targetDir: second, base: 'dev', point: '改签名' })).problems.length, 1);
+  assert.equal(await readFile(path.join(second, 'feature-a.txt'), 'utf8'), 'A');
 });

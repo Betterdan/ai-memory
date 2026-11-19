@@ -391,10 +391,13 @@ test('init 后若门禁调不到 CLI,明确提示安装方式', async () => {
   assert.match(stdout, /门禁需要可调用的 ai-memory CLI/);
   assert.match(stdout, /npm i -g @betterdanlins\/ai-memory/);
 
-  await mkdir(path.join(dir, '.git'));
-  const { stdout: missing } = await run(process.execPath, [CLI, 'hooks', 'install'], { cwd: dir, env });
+  await run('git', ['init', '-q', '.'], { cwd: dir });
+  const locator = process.platform === 'win32' ? 'where.exe' : 'which';
+  const { stdout: gitPaths } = await run(locator, ['git']);
+  const hookEnv = { ...env, PATH: path.dirname(gitPaths.trim().split(/\r?\n/)[0]), Path: path.dirname(gitPaths.trim().split(/\r?\n/)[0]) };
+  const { stdout: missing } = await run(process.execPath, [CLI, 'hooks', 'install'], { cwd: dir, env: hookEnv });
   assert.match(missing, /门禁需要可调用的 ai-memory CLI/);
 
-  const { stdout: found } = await run(process.execPath, [CLI, 'hooks', 'install', '--force'], { cwd: dir, env: { ...env, AI_MEMORY_CLI: CLI } });
+  const { stdout: found } = await run(process.execPath, [CLI, 'hooks', 'install', '--force'], { cwd: dir, env: { ...hookEnv, AI_MEMORY_CLI: CLI } });
   assert.ok(!found.includes('门禁需要可调用的 ai-memory CLI'), 'CLI 可用时不提示');
 });

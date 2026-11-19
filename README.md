@@ -68,6 +68,12 @@ What stays a written convention: judging the risk tier, deciding when to split a
 
 The full development record of the v0.8.0–v0.11.0 round — every requirement point, why R5/R6/R10 were split, and the defects that only surfaced once it ran — is in [`docs/evolution-r1-r10b.md`](docs/evolution-r1-r10b.md).
 
+### v0.13.0 — parallel Git worktrees
+
+- Git gates recognize linked worktrees and `core.hooksPath`, preserve existing hooks by default, and warn when a hook path may be shared.
+- Each worktree can select an active requirement; projects without a selection retain their previous checks. `gate contract --base <ref> --point <name>` checks committed changes from the merge base.
+- User assets are not automatically merged. Existing projects should inspect `update --dry-run`; the worktree selection remains local and untracked.
+
 ### v0.11.3 — gates no longer fail silently
 
 > v0.11.2 was tagged but never published to npm; its changes ship in this release.
@@ -341,9 +347,11 @@ AGENTS.md + .agents/ + .codex/# Codex: skills and model-specific custom agents
 | `migrate --yes` | Run the migration; `schemaVersion` is raised only after every change is written |
 | `kb build [--dry-run]` | Regenerate the knowledge index and domain cross-views from page frontmatter; only rewrites generated blocks |
 | `kb check` | Read-only validation of frontmatter, internal links, dangling references, missing generated blocks, and index staleness; exits 1 on any problem |
-| `gate ready [--point <name>] [--hook]` | Structural readiness check of every in-progress requirement point; exits 1, or 2 in `--hook` mode so a PreToolUse hook can block implementation |
+| `gate ready [--point <name>] [--hook]` | Structural readiness check of the selected point or all in-progress points; exits 1, or 2 in `--hook` mode so a PreToolUse hook can block implementation |
 | `gate trace` | Read-only verification of numbered acceptance records and evidence files for accepted and done points; exits 1 on problems |
 | `gate contract [--staged] [--hook]` | Cross-checks each point s contract declaration against what actually changed; skips unless `interfaces.md` declares `entry_globs` and `contract_globs` |
+| `gate contract --base <ref> --point <name>` | Checks committed changes from the merge base to HEAD for one requirement point; fails if the base or merge base is unavailable |
+| `worktree select --point <name>` / `worktree status` / `worktree clear` | Select, inspect or clear the current worktree's active point for the default readiness and contract gates |
 | `hooks install [--force]` / `hooks status` | Installs the tool-neutral git pre-commit gate, so Codex and other tools get enforcement too |
 | `kb export [--out <path>] [--mermaid <path>] [--no-download]` | Exports the knowledge layer, architecture baseline, finalized requirements and designs into one self-contained HTML — open it and see what the project is and how far it got. Mermaid diagrams render offline; the pinned renderer is fetched once and cached |
 | `models show` | Show the selected profile and resolved tier for every workflow stage |
@@ -351,6 +359,16 @@ AGENTS.md + .agents/ + .codex/# Codex: skills and model-specific custom agents
 | `workflow prepare` | Create a local handoff manifest with hashes of formal input documents |
 | `workflow verify` | Reject missing, stale, unresolved, or route-mismatched handoffs before execution |
 | `workflow complete` | Validate and store a structured stage receipt for downstream review |
+
+### Parallel Git worktrees
+
+Commit the initialized framework to your base branch, then create a branch and worktree per requirement, for example `git worktree add -b feature/a ../project-a dev`. Each worktree has its own `.ai/` files, requirement documents and index; ignored `.ai/runs/` receipts do not sync automatically. Existing projects should inspect `update --dry-run` before applying a safe upgrade; user knowledge is preserved.
+
+Run `ai-memory hooks install` in a worktree to install the hook at Git's effective path; `hooks status` recognizes `core.hooksPath`. Hooks are normally shared by linked worktrees, so installation and `--force` can affect the others. Existing hooks are not overwritten by default; merge them manually where appropriate. The hook checks the worktree that triggers the commit. If that worktree cannot find the CLI, it warns and allows the commit; configure a local or global installation there.
+
+After marking the current point `in-progress`, run `ai-memory worktree select --point <name>` in each worktree. Default readiness and contract gates then check only that point. The selection is stored in the worktree's ignored `.ai/runs/active-point.json`; use `worktree status` to inspect it and `worktree clear` to restore checks for all active points. Existing projects without a selection keep their previous behavior. The default gates skip a selected point when it is no longer in progress, and block if the selection is invalid, missing or ambiguous.
+
+Before merging, run `ai-memory gate contract --base dev --point <name>` to inspect committed changes from the merge base to HEAD. Check uncommitted changes separately with the ordinary or `--staged` mode. `--base` cannot be combined with `--hook`. Replace `dev` with the actual base; the requirement and interface configuration are read from the current worktree. Resolve overlapping iteration, session or knowledge changes manually; after merging, run `kb build` and `kb check` and review the diff.
 
 ### `init` options
 

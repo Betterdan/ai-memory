@@ -165,5 +165,5 @@ test('跨工具兜底样例存在且默认不安装', async () => {
   assert.ok(sample.includes('GATE=".ai/hooks/gate.mjs"') && sample.includes('"$GATE" --probe'), '放行前须能判断 CLI 是否可用');
   assert.match(sample, />&2/, '放行时须在终端提示门禁未执行,不能静默');
   assert.ok(!/npx/.test(sample));
-  assert.ok(sample.includes('.git/hooks/pre-commit'), '需给出安装方式');
+  assert.ok(sample.includes('git rev-parse --git-path hooks/pre-commit'), '需说明 Git 的实际 hook 路径');
 });

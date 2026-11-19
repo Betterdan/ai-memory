@@ -68,6 +68,12 @@ npx @betterdanlins/ai-memory models configure --profile balanced
 
 v0.8.0–v0.11.0 这一轮的完整开发记录——每个需求点、R5/R6/R10 为什么拆、以及只有跑起来才暴露的缺陷——见 [`docs/evolution-r1-r10b.md`](docs/evolution-r1-r10b.md)。
 
+### v0.13.0 —— Git worktree 并行需求
+
+- Git 门禁识别关联 worktree 和 `core.hooksPath`，不默认覆盖已有 hook，并提示共享路径的影响。
+- 每个工作区可选择活动需求；未选择时保留原有检查范围。`gate contract --base <基线> --point <需求点>` 可检查相对共同祖先的已提交差异。
+- 用户资产不自动合并；已有项目先检查 `update --dry-run`，工作区选择不进入 Git。
+
 ### v0.11.3 —— 门禁不再静默失效
 
 > v0.11.2 只打了 tag、没有发布到 npm,其内容并入本版。
@@ -339,9 +345,11 @@ AGENTS.md + .agents/ + .codex/# Codex:skills 与分层自定义 agents
 | `migrate --yes` | 执行迁移;全部变更写入成功后才提升 `schemaVersion` |
 | `kb build [--dry-run]` | 按知识页 frontmatter 重新生成索引与领域页横向视图;只重写生成区块 |
 | `kb check` | 只读校验 frontmatter、内部链接、悬空引用、生成区块是否齐全与索引是否过期;有问题时退出码 1 |
-| `gate ready [--point <名>] [--hook]` | 检查进行中需求点定稿的结构就绪度;退出码 1,`--hook` 模式为 2 以便 PreToolUse 阻塞实现 |
+| `gate ready [--point <名>] [--hook]` | 检查所选或全部进行中需求点的结构就绪度;退出码 1,`--hook` 模式为 2 以便 PreToolUse 阻塞实现 |
 | `gate trace` | 只读核验已验收及已生效需求点的 AC 记录和证据文件;有问题时退出码 1 |
 | `gate contract [--staged] [--hook]` | 核对需求点的契约声明与实际改动是否一致;`interfaces.md` 未填 globs 时跳过 |
+| `gate contract --base <基线> --point <需求点>` | 只读检查共同祖先到当前 HEAD 的已提交差异；缺少基线或共同祖先时报错 |
+| `worktree select --point <需求点>` / `worktree status` / `worktree clear` | 选择、查看或清除当前工作区的活动需求，仅影响默认就绪和契约门禁 |
 | `hooks install [--force]` / `hooks status` | 安装跨工具的 git pre-commit 门禁,让 Codex 等工具也有强制 |
 | `kb export [--out <路径>] [--mermaid <路径>] [--no-download]` | 把知识层、架构基线、需求定稿与技术设计导出为一个自包含 HTML,打开就能看清项目全貌与进度;mermaid 图离线可渲染,渲染器按固定版本取一次并缓存 |
 | `models show` | 显示当前 profile 和每个阶段解析后的模型等级 |
@@ -349,6 +357,16 @@ AGENTS.md + .agents/ + .codex/# Codex:skills 与分层自定义 agents
 | `workflow prepare` | 用正式输入文档的哈希创建本地交接清单 |
 | `workflow verify` | 执行前拒绝缺失、过期、有未决问题或路由不匹配的交接 |
 | `workflow complete` | 校验并保存供后续审查使用的结构化阶段回执 |
+
+### 多个 Git worktree 并行开发
+
+先把初始化结果提交到基线分支，再从该基线为每个需求创建独立分支和 worktree，例如 `git worktree add -b feature/a ../project-a dev`。每个 worktree 中使用自己的 `.ai/`、需求文档和暂存区；`.ai/runs/` 不进入 Git，不会自动同步。已有项目先运行 `update --dry-run` 检查，再按计划安全升级；用户知识不会被覆盖。
+
+在任一 worktree 执行 `ai-memory hooks install` 可安装 Git 当前生效的 hook，`hooks status` 会识别 `core.hooksPath`。默认 hook 通常由同仓库的 worktree 共享：安装或 `--force` 覆盖会影响其他 worktree；已存在 hook 默认不覆盖，请按需手工合并。运行时检查触发提交的 worktree。如果该 worktree 找不到 CLI，门禁会提示并放行，需为它配置项目内或全局 CLI。
+
+在每个 worktree 将当前需求登记为 `in-progress` 后，运行 `ai-memory worktree select --point <需求点>`，默认就绪和契约门禁只检查当前需求；选择仅存于该工作区被忽略的 `.ai/runs/active-point.json`。使用 `worktree status` 查看、`worktree clear` 恢复检查所有进行中的点。已有项目未选择时行为不变；所选点不再进行中时默认门禁跳过该点，配置损坏或所选点不存在/重名时阻塞并提示修正。
+
+合并前执行 `ai-memory gate contract --base dev --point <需求点>`，检查共同祖先至当前 HEAD 的已提交差异；未提交内容仍需普通模式或 `--staged` 检查。`--base` 不能与 `--hook` 同用。替换 `dev` 为实际基线；定稿和接口配置从当前工作区读取。多个需求改动同一份迭代、会话或知识文件时，合并冲突须结合实际内容人工解决，合并后重新执行 `kb build`、`kb check` 并审查 diff。
 
 ### `init` 选项
 

@@ -18,6 +18,7 @@ import { checkKnowledge } from '../src/knowledge-check.js';
 import { applyKnowledgeBuild, planKnowledgeBuild } from '../src/knowledge-index.js';
 import { ScaffoldError, scaffold } from '../src/scaffold.js';
 import { prepareHandoff, recordStageResult, verifyHandoff } from '../src/workflow.js';
+import { clearSelection, readSelection, selectPoint } from '../src/worktree-selection.js';
 
 const TEMPLATES = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'templates');
 const PACKAGE = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
@@ -335,7 +336,7 @@ gate
 gate
   .command('ready')
   .description('检查进行中的需求点定稿是否满足就绪标准;--hook 供 PreToolUse 自动触发')
-  .option('--point <name>', '只检查指定需求点,默认取 iterations.md 中 in-progress 的点')
+  .option('--point <name>', '只检查指定需求点,默认按工作区选择或全部 in-progress 点检查')
   .option('--hook', 'hook 模式:读取 stdin 的工具输入,失败以退出码 2 阻塞')
   .action(async (opts) => {
     if (opts.hook) {
@@ -353,7 +354,8 @@ gate
         }
         process.exitCode = 2;
       } catch (err) {
-        console.error(`[ai-memory] 就绪门禁跳过:${err.message}`);
+        console.error(`[ai-memory] 就绪门禁${err.code === 'ACTIVE_POINT_INVALID' ? '阻塞' : '跳过'}:${err.message}`);
+        if (err.code === 'ACTIVE_POINT_INVALID') process.exitCode = 2;
       }
       return;
     }
@@ -378,25 +380,34 @@ gate
   .command('contract')
   .description('核对需求点的契约声明与本次改动是否一致;只读,不执行项目命令')
   .option('--staged', '比对暂存区而不是工作区')
+  .option('--base <ref>', '对比基线与 HEAD 的共同祖先到 HEAD 的已提交差异')
+  .option('--point <name>', '指定需求点;--base 模式必填')
   .option('--hook', 'hook 模式:不一致时以退出码 2 阻塞')
   .action(async (opts) => {
+    if (opts.base && opts.hook) {
+      console.error('[ai-memory] --base 不能与 --hook 同时使用');
+      process.exitCode = 2;
+      return;
+    }
+    if (opts.base && (opts.staged || !opts.point)) throw new Error('--base 需要 --point 且不能与 --staged 一起使用');
     if (opts.hook) {
       try {
         const input = await readStdin();
         const payload = input ? JSON.parse(input) : {};
         if (payload?.stop_hook_active) return;
-        const result = await gateContract({ targetDir: process.cwd(), staged: Boolean(opts.staged) });
+        const result = await gateContract({ targetDir: process.cwd(), staged: Boolean(opts.staged), base: opts.base, point: opts.point });
         if (result.skipped || !result.problems.length) return;
         console.error('[ai-memory] 契约声明与本次改动不一致:');
         for (const problem of result.problems) console.error(`  ${problem.point}:${problem.message}`);
         process.exitCode = 2;
       } catch (err) {
-        console.error(`[ai-memory] 契约门禁跳过:${err.message}`);
+        console.error(`[ai-memory] 契约门禁${err.code === 'ACTIVE_POINT_INVALID' ? '阻塞' : '跳过'}:${err.message}`);
+        if (err.code === 'ACTIVE_POINT_INVALID') process.exitCode = 2;
       }
       return;
     }
 
-    const result = await gateContract({ targetDir: process.cwd(), staged: Boolean(opts.staged) });
+    const result = await gateContract({ targetDir: process.cwd(), staged: Boolean(opts.staged), base: opts.base, point: opts.point });
     if (result.skipped) {
       console.log(`跳过:${result.skipped}`);
       return;
@@ -409,11 +420,25 @@ gate
     process.exitCode = 1;
   });
 
+const worktree = program.command('worktree').description('管理当前工作区的活动需求');
+worktree.command('select').requiredOption('--point <name>', '当前 in-progress 需求点').action(async (opts) => {
+  await selectPoint(process.cwd(), opts.point);
+  console.log(`当前工作区活动需求:${opts.point}`);
+});
+worktree.command('clear').action(async () => {
+  await clearSelection(process.cwd());
+  console.log('已清除活动需求,恢复检查全部进行中的需求点');
+});
+worktree.command('status').action(async () => {
+  const point = await readSelection(process.cwd());
+  console.log(point ? `当前工作区活动需求:${point}` : '未选择活动需求,检查全部进行中的需求点');
+});
+
 const hooks = program.command('hooks').description('安装跨工具的 git 门禁;任何 AI 工具下都生效');
 
 hooks
   .command('install')
-  .description('把 .ai/hooks/pre-commit.sample 装到 .git/hooks/pre-commit')
+  .description('把 .ai/hooks/pre-commit.sample 安装到 Git 当前生效的 hook 路径')
   .option('--force', '覆盖已存在的 pre-commit')
   .action(async (opts) => {
     const result = await installGitHook({ targetDir: process.cwd(), force: Boolean(opts.force) });

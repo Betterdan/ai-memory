@@ -1,6 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parsePoints } from './iterations.js';
+import { readSelection, selectionError } from './worktree-selection.js';
 
 const ITERATIONS = '.ai/knowledge/iterations.md';
 const REQUIREMENTS = 'docs/requirements';
@@ -86,8 +87,14 @@ export function contractDeclaration(body) {
 
 export async function inProgressPoints(targetDir) {
   const body = await readOptional(path.join(targetDir, ...ITERATIONS.split('/')));
-  if (body === undefined) return [];
-  return parsePoints(body).filter(point => point.status === 'in-progress').map(point => point.point);
+  const selected = await readSelection(targetDir);
+  const points = body === undefined ? [] : parsePoints(body);
+  if (selected) {
+    const matches = points.filter(point => point.point === selected);
+    if (matches.length !== 1) throw selectionError(`活动需求「${selected}」不存在或不唯一;请重新选择或清除`);
+    return matches[0].status === 'in-progress' ? [selected] : [];
+  }
+  return points.filter(point => point.status === 'in-progress').map(point => point.point);
 }
 
 export async function locateFinal(targetDir, point) {
@@ -105,7 +112,7 @@ export async function locateFinal(targetDir, point) {
     const rel = `${REQUIREMENTS}/${version}/final/${point}.md`;
     if ((await readOptional(path.join(targetDir, ...rel.split('/')))) !== undefined) matches.push(rel);
   }
-  if (!matches.length) return { error: `需求点已标为 in-progress,但找不到定稿 ${REQUIREMENTS}/<版本>/final/${point}.md` };
+  if (!matches.length) return { error: `找不到定稿 ${REQUIREMENTS}/<版本>/final/${point}.md` };
   if (matches.length > 1) return { error: `多个版本目录下都有 ${point}.md:${matches.join('、')}` };
   return { rel: matches[0] };
 }

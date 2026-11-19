@@ -2,7 +2,8 @@
 # ai-memory 就绪门禁的跨工具兜底:提交前检查进行中的需求点定稿是否齐备。
 # 安装(显式动作,框架不会替你装):
 #   ai-memory hooks install
-# 或手工:cp .ai/hooks/pre-commit.sample .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+# 或手工合并到 `git rev-parse --git-path hooks/pre-commit` 指出的有效 hook。
+# Git hook 可能被多个 worktree 共用;Git 会在触发提交的工作区根目录运行本脚本。
 #
 # Claude Code 侧有 PreToolUse/Stop hook 在开工前与收尾时拦截;
 # 其他工具(如 Codex)没有等价机制,本脚本是它们唯一的自动门禁。

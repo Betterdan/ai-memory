@@ -8,14 +8,16 @@ import { contractDeclaration, inProgressPoints, locateFinal } from './gate-ready
 const run = promisify(execFile);
 const INTERFACES = 'docs/architecture/interfaces.md';
 
-export async function gateContract({ targetDir, staged = false }) {
+export async function gateContract({ targetDir, staged = false, base, point }) {
+  if (base && staged) throw new Error('--base 与 --staged 不能同时使用');
+  if (base && !point) throw new Error('--base 需要通过 --point 指定需求点');
+  if (point && (/[\\/]/.test(point) || point === '.' || point === '..')) throw new Error('需求点名称必须是文件名');
+  const changed = await changedPaths(targetDir, staged, base);
+  const points = point ? [point] : await inProgressPoints(targetDir);
   const config = await readInterfaceConfig(targetDir);
   if (config.skip) return { skipped: config.skip, problems: [] };
-
-  const changed = await changedPaths(targetDir, staged);
   if (changed === null) return { skipped: '当前目录不是 git 仓库,或 git 不可用', problems: [] };
 
-  const points = await inProgressPoints(targetDir);
   if (!points.length) return { skipped: '没有进行中的需求点', problems: [] };
 
   const touchedEntries = changed.filter(file => matchAny(config.entryGlobs, file));
@@ -68,7 +70,17 @@ async function readInterfaceConfig(targetDir) {
   return { entryGlobs, contractGlobs };
 }
 
-async function changedPaths(targetDir, staged) {
+async function changedPaths(targetDir, staged, base) {
+  if (base) {
+    try {
+      const { stdout: commit } = await run('git', ['rev-parse', '--verify', '--end-of-options', `${base}^{commit}`], { cwd: targetDir });
+      const { stdout: mergeBase } = await run('git', ['merge-base', 'HEAD', commit.trim()], { cwd: targetDir });
+      const { stdout } = await run('git', ['diff', '--name-only', '--no-renames', '-z', mergeBase.trim(), 'HEAD', '--'], { cwd: targetDir });
+      return stdout.split('\0').filter(Boolean);
+    } catch (err) {
+      throw new Error(`无法比较基线 ${base}:请检查引用、Git 仓库及共同祖先`, { cause: err });
+    }
+  }
   // -uall:不加的话 git 会把未跟踪目录折叠成 `?? src/`,新增文件拿不到完整路径
   const args = staged ? ['diff', '--cached', '--name-only'] : ['status', '--porcelain', '-uall'];
   let stdout;
