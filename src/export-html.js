@@ -1,8 +1,9 @@
 import { escapeHtml } from './markdown.js';
 
-const STATUS_ORDER = ['in-progress', 'designed', 'finalized', 'draft', 'planned', 'done'];
+const STATUS_ORDER = ['in-progress', 'accepted', 'designed', 'finalized', 'draft', 'planned', 'done'];
 const STATUS_LABEL = {
   'in-progress': '进行中',
+  accepted: '待生效',
   designed: '已设计',
   finalized: '已定稿',
   draft: '草稿',

@@ -11,6 +11,7 @@ import {
 import { applyMigration, planMigration } from '../src/migrate.js';
 import { gateContract } from '../src/gate-contract.js';
 import { gateReady, isHookAllowedPath } from '../src/gate-ready.js';
+import { gateTrace } from '../src/gate-trace.js';
 import { CLI_HINT, gateCliReachable, gitHookStatus, installGitHook } from '../src/git-hooks.js';
 import { DEFAULT_OUT, exportKnowledge } from '../src/knowledge-export.js';
 import { checkKnowledge } from '../src/knowledge-check.js';
@@ -317,6 +318,19 @@ kb
   });
 
 const gate = program.command('gate').description('开工前的机械门禁;只查结构,不查内容');
+
+gate
+  .command('trace')
+  .description('只读检查已验收或已生效需求点的验收记录')
+  .action(async () => {
+    const { results, blocked } = await gateTrace({ targetDir: process.cwd() });
+    if (!results.length) console.log('没有已验收或已完成的需求点,无需检查');
+    for (const item of results) {
+      console.log(`${item.failures.length ? '未通过' : '通过'} ${item.point}${item.file ? ` (${item.file})` : ''}`);
+      for (const failure of item.failures) console.log(`  - ${failure}`);
+    }
+    if (blocked.length) process.exitCode = 1;
+  });
 
 gate
   .command('ready')

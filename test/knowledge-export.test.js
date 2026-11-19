@@ -89,6 +89,17 @@ async function snapshot(dir, skip) {
   return out;
 }
 
+test('已验收待生效的需求点在首页单独显示', async () => {
+  const dir = await makeProject({ content: false });
+  const file = path.join(dir, '.ai', 'knowledge', 'iterations.md');
+  const content = await readFile(file, 'utf8');
+  await writeFile(file, content.replace('|---|---|---|---|---|', '|---|---|---|---|---|\n| v1.0.0 | 等待发布 | M | accepted | 无 |'));
+  const result = await exportKnowledge({ targetDir: dir, allowDownload: false });
+  const html = await readFile(path.join(dir, result.out), 'utf8');
+  assert.match(html, /待生效/);
+  assert.match(html, /等待发布/);
+});
+
 const read = (dir, rel) => readFile(path.join(dir, ...rel.split('/')), 'utf8');
 // 夹具里有 mermaid 图,测试环境拿不到 bundle 会降级并产生一条警告,
 // 所以图片相关断言只看图片自己的警告

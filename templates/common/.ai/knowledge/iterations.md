@@ -5,7 +5,7 @@
 
 ## 需求点
 
-> 状态:planned(已拆分待定稿) / draft / finalized / designed / in-progress / done
+> 状态:planned(已拆分待定稿) / draft / finalized / designed / in-progress / accepted(已验收待生效) / done(已生效)
 > 同一需求集合的点靠命名前缀归组。
 > 「需求点」列填 `final/` 下的文件名(不含 .md),`ai-memory gate ready` 据此定位定稿。
 

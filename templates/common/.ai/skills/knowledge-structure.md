@@ -38,6 +38,8 @@
 | 领域页 `type: domain` | `name`、`summary` | — |
 | 决策页 `type: decision` | `status`、`date` | `superseded_by` |
 
+入口页和领域页首次补档时可选 `baseline_status`、`baseline_commit`、`confirmed_by`，含义与检查规则见下方「历史功能首次补档」。
+
 - `domains` 填领域页的 `name`,脚本据此反查生成领域页的「关联入口」。
 - `contract` 填契约文件路径,汇总为领域页的「相关接口」。
 - 缺 frontmatter 或缺必填字段的页会被跳过并列出,不影响其他页生成。
@@ -49,6 +51,13 @@
 标记缺失、重复或顺序错误时脚本保守失败,不会覆盖整个文件。
 
 `ai-memory kb check` 只读校验 frontmatter、知识层内部链接、悬空领域/决策引用与索引是否过期;有问题时退出码为 1。领域页没有关联入口是合法状态(无对外入口的后端行为),不会报错。
+
+## 历史功能首次补档
+
+1. 与负责人确认本次整理的入口、领域、包含及排除范围和确认人；不要把补档当成开发授权。
+2. 依据代码、测试和现有文档整理实际行为，记录所依据的代码提交；证据冲突或无法判断时列出差异，请负责人裁定，不擅自选择或顺手修改功能。
+3. 新建入口页或领域页时，可在 frontmatter 设置 `baseline_status: pending` 和 `baseline_commit`。展示内容及证据供负责人确认；只有收到明确确认后才填写 `baseline_status: confirmed` 和 `confirmed_by`。
+4. `ai-memory kb check` 报告显式标记为待确认、或已确认但缺少提交和确认人的补档。未使用这些字段的旧知识页保持兼容，不推断其确认状态。
 
 ## 写入纪律
 

@@ -64,6 +64,17 @@ test('全新项目的空知识层校验通过', async () => {
   assert.deepEqual(result.counted, { entry: 0, domain: 0, decision: 0 });
 });
 
+test('历史补档只检查显式登记的状态,不要求旧知识补写', async () => {
+  const dir = await makeProject();
+  const rel = '.ai/knowledge/entries/order.md';
+  await write(dir, rel, ENTRY.replace('domains: [订单]', 'domains: []'));
+  assert.ok(!(await checkKnowledge({ targetDir: dir })).problems.some(p => p.kind === '补档待确认'));
+  await write(dir, rel, ENTRY.replace('domains: [订单]', 'domains: []\nbaseline_status: pending'));
+  assert.ok((await checkKnowledge({ targetDir: dir })).problems.some(p => p.kind === '补档待确认'));
+  await write(dir, rel, ENTRY.replace('domains: [订单]', 'domains: []\nbaseline_status: confirmed\nbaseline_commit: abc123\nconfirmed_by: owner'));
+  assert.ok(!(await checkKnowledge({ targetDir: dir })).problems.some(p => p.kind === '补档待确认'));
+});
+
 test('链接提取跳过围栏、外链与纯锚点', () => {
   const body = lines(
     '[相对](../domains/a.md) [外链](https://example.com) [锚点](#x) [带锚点](b.md#section)',

@@ -49,6 +49,8 @@ npx @betterdanlins/ai-memory models configure --profile balanced
 
 ## 什么时候会被拦住
 
+验收追溯可用 `ai-memory gate trace` 手动检查：使用 AC 编号的需求点在 `accepted` 或 `done` 状态下须提供每条验收记录和证据，旧的无编号定稿保持兼容。此检查只验证记录和引用文件，不证明测试已运行；它不会自动加入已有 Git hook。`accepted` 表示已验收但尚未生效；生效后再标为 `done` 并更新当前知识。历史功能补档可选择标记确认状态，详见生成项目的 `.ai/skills/knowledge-structure.md`。已有项目先运行 `update --dry-run` 检查，再执行安全更新；用户拥有的迭代和知识文件不会自动改写。
+
 流程写在 `.ai/skills/` 里,但写下来不等于会被执行。下面四处是机械的:它们自己运行,不合格就以退出码失败。
 
 | 时机 | 机制 | 行为 |
@@ -338,6 +340,7 @@ AGENTS.md + .agents/ + .codex/# Codex:skills 与分层自定义 agents
 | `kb build [--dry-run]` | 按知识页 frontmatter 重新生成索引与领域页横向视图;只重写生成区块 |
 | `kb check` | 只读校验 frontmatter、内部链接、悬空引用、生成区块是否齐全与索引是否过期;有问题时退出码 1 |
 | `gate ready [--point <名>] [--hook]` | 检查进行中需求点定稿的结构就绪度;退出码 1,`--hook` 模式为 2 以便 PreToolUse 阻塞实现 |
+| `gate trace` | 只读核验已验收及已生效需求点的 AC 记录和证据文件;有问题时退出码 1 |
 | `gate contract [--staged] [--hook]` | 核对需求点的契约声明与实际改动是否一致;`interfaces.md` 未填 globs 时跳过 |
 | `hooks install [--force]` / `hooks status` | 安装跨工具的 git pre-commit 门禁,让 Codex 等工具也有强制 |
 | `kb export [--out <路径>] [--mermaid <路径>] [--no-download]` | 把知识层、架构基线、需求定稿与技术设计导出为一个自包含 HTML,打开就能看清项目全貌与进度;mermaid 图离线可渲染,渲染器按固定版本取一次并缓存 |

@@ -8,6 +8,8 @@
 
 ## Why
 
+Acceptance traceability is available through `ai-memory gate trace`: numbered acceptance criteria on `accepted` or `done` items need corresponding evidence records. Older unnumbered requirements remain compatible. The check verifies records and referenced files, not whether tests actually ran, and is not automatically added to existing Git hooks. Use `accepted` for changes awaiting activation and `done` once active; update current knowledge only when the change takes effect. Existing functionality can be documented with the optional confirmation workflow in `.ai/skills/knowledge-structure.md`. Existing projects should review `update --dry-run` before applying the safe update; user-owned iteration and knowledge files are not rewritten.
+
 AI coding agents forget everything between sessions, and every tool (Claude Code, Codex, …) wants its own config format. `ai-memory` fixes both:
 
 - **One source of truth.** All real content lives in a single agent-agnostic `.ai/` directory. Tool-specific folders (`.claude/`, `.agents/`) are thin wrappers that just point back to it — so switching or adding tools never forks your knowledge base.
@@ -340,6 +342,7 @@ AGENTS.md + .agents/ + .codex/# Codex: skills and model-specific custom agents
 | `kb build [--dry-run]` | Regenerate the knowledge index and domain cross-views from page frontmatter; only rewrites generated blocks |
 | `kb check` | Read-only validation of frontmatter, internal links, dangling references, missing generated blocks, and index staleness; exits 1 on any problem |
 | `gate ready [--point <name>] [--hook]` | Structural readiness check of every in-progress requirement point; exits 1, or 2 in `--hook` mode so a PreToolUse hook can block implementation |
+| `gate trace` | Read-only verification of numbered acceptance records and evidence files for accepted and done points; exits 1 on problems |
 | `gate contract [--staged] [--hook]` | Cross-checks each point s contract declaration against what actually changed; skips unless `interfaces.md` declares `entry_globs` and `contract_globs` |
 | `hooks install [--force]` / `hooks status` | Installs the tool-neutral git pre-commit gate, so Codex and other tools get enforcement too |
 | `kb export [--out <path>] [--mermaid <path>] [--no-download]` | Exports the knowledge layer, architecture baseline, finalized requirements and designs into one self-contained HTML — open it and see what the project is and how far it got. Mermaid diagrams render offline; the pinned renderer is fetched once and cached |

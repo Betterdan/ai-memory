@@ -4,7 +4,7 @@ import { parsePoints } from './iterations.js';
 
 const ITERATIONS = '.ai/knowledge/iterations.md';
 const REQUIREMENTS = 'docs/requirements';
-const SECTIONS = ['目标', '范围', '外部行为契约', '验收标准', '开放问题', '实现交接'];
+const SECTIONS = ['目标', '范围', '外部行为契约', '验收标准', '开放问题', '实现交接', '验收记录'];
 const UNRESOLVED = ['TBD', 'tbd', '待定', '???', '??'];
 const CONTRACT_MARKS = ['契约 diff 已确认', '不涉及对外接口', '不涉及对外可观察接口'];
 const OPEN_OK = ['已确认', '假设', '不阻塞'];
@@ -41,6 +41,15 @@ export function checkReadiness(body) {
   } else {
     const marker = UNRESOLVED.find(word => acceptance.includes(word));
     if (marker) failures.push(`就绪标准 2:验收标准里仍有未决标记「${marker}」`);
+    const items = itemLines(acceptance);
+    const ids = items.map(line => line.match(/\bAC-\d+\b/i)?.[0]?.toUpperCase());
+    if (ids.some(Boolean)) {
+      const missing = ids.filter(id => !id).length;
+      if (missing) failures.push(`${missing} 条验收标准缺少 AC 编号`);
+      for (const id of new Set(ids.filter(Boolean))) {
+        if (ids.filter(value => value === id).length > 1) failures.push(`${id} 重复`);
+      }
+    }
   }
 
   if (!sections['范围']) failures.push('就绪标准 3:缺少「范围」章节');
@@ -101,7 +110,7 @@ export async function locateFinal(targetDir, point) {
   return { rel: matches[0] };
 }
 
-function sectionMap(body) {
+export function sectionMap(body) {
   const lines = body.split('\n');
   const marks = [];
   lines.forEach((line, index) => {
@@ -109,17 +118,17 @@ function sectionMap(body) {
     const structural = /^#{1,6}\s/.test(text) || /^([-*]\s*)?\*\*[^*]+\*\*/.test(text) || /^\|\s*\*\*/.test(text);
     if (!structural) return;
     const name = SECTIONS.find(candidate => text.includes(candidate));
-    if (name) marks.push({ name, index });
+    if (name || /^#{1,6}\s/.test(text)) marks.push({ name, index });
   });
   const out = {};
   marks.forEach((mark, position) => {
     const end = position + 1 < marks.length ? marks[position + 1].index : lines.length;
-    if (out[mark.name] === undefined) out[mark.name] = lines.slice(mark.index + 1, end).join('\n');
+    if (mark.name && out[mark.name] === undefined) out[mark.name] = lines.slice(mark.index + 1, end).join('\n');
   });
   return out;
 }
 
-function itemLines(text) {
+export function itemLines(text) {
   return text.split('\n').map(line => line.trim())
     .filter(line => /^([-*]\s|\d+\.\s|\|)/.test(line) && !line.startsWith('|---') && line.length > 3);
 }

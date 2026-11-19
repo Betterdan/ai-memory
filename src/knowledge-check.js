@@ -12,6 +12,17 @@ export async function checkKnowledge({ targetDir }) {
 
   for (const item of skipped) problems.push({ kind: 'frontmatter', message: item });
 
+  // 仅检查显式启用补档的页面,不把已有知识页误判成未确认。
+  for (const page of [...pages.entry, ...pages.domain]) {
+    const status = page.data.baseline_status;
+    if (status === undefined) continue;
+    if (status !== 'confirmed') {
+      problems.push({ kind: '补档待确认', message: `${page.rel} — 补档尚未确认` });
+    } else if (!page.data.baseline_commit || !page.data.confirmed_by) {
+      problems.push({ kind: '补档待确认', message: `${page.rel} — 已确认的补档需要 baseline_commit 和 confirmed_by` });
+    }
+  }
+
   const domainNames = new Set(pages.domain.map(page => page.data.name));
   for (const entry of pages.entry) {
     for (const name of toList(entry.data.domains)) {

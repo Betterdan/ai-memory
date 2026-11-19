@@ -329,6 +329,22 @@ test('gate ready 的退出码:普通模式 1,hook 模式 2,坏输入放行', asy
   assert.ok(malformed.stderr.includes('就绪门禁跳过'), '门禁自身出错时必须放行');
 });
 
+test('gate trace 检查验收记录并返回退出码', async () => {
+  const dir = await temp('aim-cli-trace-');
+  await run(process.execPath, [CLI, 'init', '--name', 'demo', '--tools', '', '--yes'], { cwd: dir });
+  const iterations = path.join(dir, '.ai', 'knowledge', 'iterations.md');
+  const body = await readFile(iterations, 'utf8');
+  await writeFile(iterations, body.replace('|---|---|---|---|---|', '|---|---|---|---|---|\n| v1.0.0 | demo | M | accepted | 无 |'));
+  const final = path.join(dir, 'docs', 'requirements', 'v1.0.0', 'final', 'demo.md');
+  await writeFile(final, '## 验收标准\n- AC-01: 返回结果\n');
+  const failed = await run(process.execPath, [CLI, 'gate', 'trace'], { cwd: dir }).then(() => null, err => err);
+  assert.equal(failed.code, 1);
+  assert.match(failed.stdout, /AC-01 没有验收记录/);
+  await writeFile(final, '## 验收标准\n- AC-01: 返回结果\n## 验收记录\n| AC | 证据 | 结果 |\n|---|---|---|\n| AC-01 | 人工确认结果 | 通过 |\n');
+  const passed = await run(process.execPath, [CLI, 'gate', 'trace'], { cwd: dir });
+  assert.match(passed.stdout, /通过 demo/);
+});
+
 test('gate contract 的 hook 模式:不一致时 2,防循环时 0', async () => {
   const dir = await temp('aim-cli-contract-');
   await run(process.execPath, [CLI, 'init', '--name', 'demo', '--stack', 'Go', '--tools', '', '--yes'], { cwd: dir });
