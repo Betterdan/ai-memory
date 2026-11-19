@@ -243,6 +243,27 @@ test('自适应与深浅色:含窄屏断点与系统配色查询', async () => {
   assert.ok(html.includes('viewport'));
 });
 
+test('搜索和移动导航有可访问名称,深浅色的导航文字对比足够', async () => {
+  const dir = await makeProject();
+  await exportKnowledge({ targetDir: dir, allowDownload: false });
+  const html = await read(dir, '.ai/knowledge.html');
+  assert.match(html, /id="search"[^>]*aria-label="搜索知识库"/);
+  assert.match(html, /id="menu"[^>]*aria-expanded="false"[^>]*aria-controls="sidebar"/);
+  const roots = [...html.matchAll(/:root\{([^}]+)\}/g)].map(match => Object.fromEntries(
+    [...match[1].matchAll(/(--[\w-]+):(#[0-9a-f]{6})/gi)].map(part => [part[1], part[2]])
+  ));
+  const luminance = hex => {
+    const rgb = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+    return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+  };
+  assert.equal(roots.length, 2);
+  for (const root of roots) {
+    const values = [luminance(root['--accent-soft']), luminance(root['--accent-ink'])].sort((a, b) => b - a);
+    assert.ok((values[0] + 0.05) / (values[1] + 0.05) >= 4.5, '选中导航的文字对比至少 4.5:1');
+  }
+});
+
 test('知识层为空时给出空状态与下一步', async () => {
   const dir = await makeProject({ content: false });
   const result = await exportKnowledge({ targetDir: dir, allowDownload: false });

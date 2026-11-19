@@ -295,6 +295,8 @@ npx @betterdanlins/ai-memory@0.11.2 kb export
 
 The output lands at `.ai/knowledge.html`. It is a generated artifact: commit it if you want teammates to open it from the repository, ignore it if you would rather regenerate on demand — the framework does not decide for you.
 
+The layout adapts to mobile screens and follows the system's light or dark color scheme. Run `kb export` again to refresh an existing HTML file with the current theme.
+
 If your pages contain Mermaid diagrams, the first export downloads the pinned renderer once (about 3.4MB) and caches it globally; later exports and other projects reuse that cache. On a machine with no network, pass `--no-download` to fall back to code blocks, or `--mermaid <path>` to supply the bundle yourself.
 
 ## What it generates
