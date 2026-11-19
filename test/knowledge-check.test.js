@@ -124,6 +124,21 @@ test('领域页没有关联入口是合法状态', async () => {
   assert.deepEqual(result.problems, [], '无对外入口的后端行为归领域页,不应报错');
 });
 
+test('CRLF 生成区构建后保持幂等且校验通过', async () => {
+  const dir = await makeProject();
+  const overview = path.join(dir, '.ai', 'knowledge', 'overview.md');
+  const body = await readFile(overview, 'utf8');
+  await writeFile(overview, body.replace(/\r?\n/g, '\r\n'));
+  await write(dir, '.ai/knowledge/domains/orders.md', DOMAIN.replace(/\r?\n/g, '\r\n'));
+  await write(dir, '.ai/knowledge/entries/orders.md', ENTRY);
+  await applyKnowledgeBuild({ targetDir: dir, plan: await planKnowledgeBuild({ targetDir: dir }) });
+  assert.deepEqual((await planKnowledgeBuild({ targetDir: dir })).changes, []);
+  assert.deepEqual((await checkKnowledge({ targetDir: dir })).problems, []);
+  const updated = await readFile(overview, 'utf8');
+  assert.ok(updated.includes('\r\n'));
+  assert.ok(!/(?<!\r)\n/.test(updated));
+});
+
 test('悬空领域引用与悬空决策引用被报告', async () => {
   const dir = await makeProject();
   await write(dir, '.ai/knowledge/domains/orders.md', DOMAIN);

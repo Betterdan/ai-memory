@@ -26,7 +26,7 @@ export function resolveSafeDestination(targetDir, dest) {
   return destination;
 }
 
-export async function assertNoSymlinkPath(targetDir, destPath) {
+export async function assertNoSymlinkPath(targetDir, destPath, { requireDirectoryParents = false } = {}) {
   const root = path.resolve(targetDir);
   const destination = path.resolve(destPath);
   const relative = path.relative(root, destination);
@@ -46,6 +46,9 @@ export async function assertNoSymlinkPath(targetDir, destPath) {
     }
     if (stats.isSymbolicLink()) {
       throw new Error(`目标路径包含符号链接或 junction: ${current}`);
+    }
+    if (requireDirectoryParents && current !== destination && !stats.isDirectory()) {
+      throw new Error(`目标上级路径必须是目录: ${current}`);
     }
   }
 }

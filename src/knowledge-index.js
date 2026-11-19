@@ -95,7 +95,7 @@ export async function applyKnowledgeBuild({ targetDir, plan }) {
 
 function addBlockChange(changes, dest, body, block, content) {
   if (!hasGeneratedBlock(body, block)) return;
-  if (readGeneratedBlock(body, block).trim() === content.trim()) return;
+  if (readGeneratedBlock(body, block).replace(/\r\n/g, '\n').trim() === content.replace(/\r\n/g, '\n').trim()) return;
   changes.push({ dest, block, content });
 }
 

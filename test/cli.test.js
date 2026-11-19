@@ -47,6 +47,19 @@ test('init --tools claude 不生成 Codex 侧', async () => {
   await assert.rejects(access(path.join(dir, 'AGENTS.md')));
 });
 
+test('已有项目初始化不读取或改写原有 Wiki 与代码', async () => {
+  const dir = await temp('aim-existing-project-');
+  await mkdir(path.join(dir, 'wiki'));
+  await mkdir(path.join(dir, 'src'));
+  await writeFile(path.join(dir, 'wiki', 'billing.md'), '文档：每日上限 20\n');
+  await writeFile(path.join(dir, 'src', 'billing.js'), 'export const limit = 10;\n');
+  await run(process.execPath, [CLI, 'init', '--name', 'existing', '--tools', 'claude,codex', '--yes'], { cwd: dir });
+  assert.equal(await readFile(path.join(dir, 'wiki', 'billing.md'), 'utf8'), '文档：每日上限 20\n');
+  assert.equal(await readFile(path.join(dir, 'src', 'billing.js'), 'utf8'), 'export const limit = 10;\n');
+  const overview = await readFile(path.join(dir, '.ai', 'knowledge', 'overview.md'), 'utf8');
+  assert.ok(!overview.includes('每日上限 20') && !overview.includes('limit = 10'));
+});
+
 test('init --yes 冲突时跳过既有文件', async () => {
   const dir = await temp('aim-cli-');
   await writeFile(path.join(dir, 'CLAUDE.md'), 'MINE\n');
@@ -83,6 +96,55 @@ test('--import 导入存在文件并明确报告缺失文件回退', async () =>
   assert.equal(await readFile(path.join(dir, '.ai', 'memory', 'user-profile.md'), 'utf8'), 'IMPORTED_PROFILE\n');
   assert.ok(stdout.includes('已导入 .ai/memory/user-profile.md'));
   assert.ok(stdout.includes('导入源缺失,使用模板 .ai/memory/feedback.md'));
+});
+
+test('init --adopt 保留既有规则、工具配置和架构资产,并可安全升级', async () => {
+  const dir = await temp('aim-adopt-');
+  const agents = '\ufeff# Existing rules\r\n\r\n保留原项目规则。\r\n';
+  const claudeHeader = '---\npaths:\n  - "backend/**"\n---\n';
+  const claude = '# Existing Claude rules\n';
+  const settings = '{"permissions":{"deny":["Write"]}}\n';
+  const architecture = '# Existing architecture\n';
+  await mkdir(path.join(dir, '.claude'));
+  await mkdir(path.join(dir, 'docs', 'architecture'), { recursive: true });
+  const read = dest => readFile(path.join(dir, dest), 'utf8');
+  await writeFile(path.join(dir, 'AGENTS.md'), agents);
+  await writeFile(path.join(dir, 'CLAUDE.md'), claudeHeader + claude);
+  await writeFile(path.join(dir, '.claude', 'settings.json'), settings);
+  await writeFile(path.join(dir, 'docs', 'architecture', 'system-context.md'), architecture);
+
+  await run(process.execPath, [CLI, 'init', '--adopt', '--yes'], { cwd: dir });
+  const newAgents = await read('AGENTS.md');
+  assert.ok(newAgents.startsWith('\ufeff<!-- ai-memory:managed:start -->\r\n'));
+  assert.ok(newAgents.includes(agents.slice(1)));
+  const newClaude = await read('CLAUDE.md');
+  assert.ok(newClaude.startsWith(claudeHeader));
+  assert.ok(newClaude.includes(claude));
+  assert.equal(await read('.claude/settings.json'), settings);
+  assert.equal(await read('docs/architecture/system-context.md'), architecture);
+
+  await writeFile(path.join(dir, '.claude', 'settings.json'), '{"permissions":{"deny":["Write","Edit"]}}\n');
+  await run(process.execPath, [CLI, 'update', '--yes'], { cwd: dir });
+  assert.equal(await read('AGENTS.md'), newAgents);
+  assert.equal(await read('CLAUDE.md'), newClaude);
+  assert.equal(await read('.claude/settings.json'), '{"permissions":{"deny":["Write","Edit"]}}\n');
+});
+
+test('init --adopt 在入口标记异常或受管文件冲突时零写入', async () => {
+  for (const [dest, content, error] of [
+    ['AGENTS.md', '<!-- ai-memory:managed:start -->\n# Existing', /已有 ai-memory 区块标记/],
+    ['CLAUDE.md', '---\npaths: backend/**\n', /frontmatter 未闭合/],
+    ['docs/design/README.md', '# Existing design process', /已有受管目标冲突/],
+    ['docs/architecture', 'existing non-directory', /上级路径必须是目录/],
+  ]) {
+    const dir = await temp('aim-adopt-invalid-');
+    const file = path.join(dir, dest);
+    await mkdir(path.dirname(file), { recursive: true });
+    await writeFile(file, content);
+    await assert.rejects(run(process.execPath, [CLI, 'init', '--adopt', '--yes'], { cwd: dir }), error);
+    assert.equal(await readFile(file, 'utf8'), content);
+    await assert.rejects(access(path.join(dir, '.ai')));
+  }
 });
 
 test('--import 目录不存在时报错且不生成文件', async () => {

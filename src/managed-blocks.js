@@ -22,6 +22,30 @@ export function replaceManagedBlock(current, desired) {
   return current.slice(0, currentBlock.start) + replacement + current.slice(currentBlock.end);
 }
 
+export function adoptManagedBlock(current, desired) {
+  const markers = [MANAGED_BLOCK_START, MANAGED_BLOCK_END, '<!-- ai-memory:user:start -->', '<!-- ai-memory:user:end -->'];
+  if (markers.some(marker => current.includes(marker))) {
+    throw new ManagedBlockError('已有 ai-memory 区块标记,请人工核对入口文件');
+  }
+  const { start, end } = locateManagedBlock(desired, '模板');
+  const eol = current.includes('\r\n') ? '\r\n' : '\n';
+  const bom = current.startsWith('\ufeff') ? '\ufeff' : '';
+  let original = current.slice(bom.length);
+  let prefix = bom;
+  const opening = /^---[ \t]*\r?\n/.exec(original);
+  if (opening) {
+    const closing = /^(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/m.exec(original.slice(opening[0].length));
+    if (!closing) throw new ManagedBlockError('入口 frontmatter 未闭合,请人工核对');
+    const headerEnd = opening[0].length + closing.index + closing[0].length;
+    const header = original.slice(0, headerEnd);
+    prefix += header + (header.endsWith('\n') ? '' : eol) + eol;
+    original = original.slice(headerEnd);
+  }
+  const separator = original.endsWith('\n') || !original ? '' : eol;
+  return prefix + normalizeEol(desired.slice(start, end), eol) + eol + eol
+    + markers[2] + eol + original + separator + markers[3] + eol;
+}
+
 export function hasValidManagedBlock(content) {
   try {
     locateManagedBlock(content, '文件');

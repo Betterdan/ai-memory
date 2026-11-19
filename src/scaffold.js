@@ -2,6 +2,7 @@ import { constants } from 'node:fs';
 import { mkdir, readFile, writeFile, access, lstat, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { buildManifest } from './manifest.js';
+import { adoptManagedBlock } from './managed-blocks.js';
 import { assertNoSymlinkPath, resolveSafeDestination } from './path-safety.js';
 import { render } from './render.js';
 
@@ -20,29 +21,40 @@ export class ScaffoldError extends Error {
   }
 }
 
-export async function scaffold({ templatesRoot, targetDir, vars, tools, onConflict, importFrom }) {
+export async function scaffold({ templatesRoot, targetDir, vars, tools, onConflict, importFrom, requireDirectoryParents }) {
   const importRoot = importFrom ? await validateImportRoot(importFrom) : undefined;
   const manifest = await buildManifest(templatesRoot, tools);
-  const summary = { written: [], skipped: [], imported: [], fallback: [] };
+  const summary = { written: [], skipped: [], imported: [], fallback: [], preserved: [] };
   const candidates = [];
 
   for (const entry of manifest) {
     const destPath = resolveSafeDestination(targetDir, entry.dest);
-    if (await exists(destPath)) {
-      const { dest } = entry;
-      if ((await onConflict(dest)) !== 'overwrite') { summary.skipped.push(dest); continue; }
+    const existing = await inspect(destPath);
+    const action = existing ? await onConflict(entry.dest) : 'create';
+    if (existing && !['overwrite', 'preserve', 'adopt-entry'].includes(action)) {
+      summary.skipped.push(entry.dest);
+      continue;
     }
-    candidates.push({ ...entry, destPath });
+    if (action === 'preserve' || action === 'adopt-entry') {
+      await assertNoSymlinkPath(targetDir, destPath);
+      if (!existing.isFile()) throw new Error(`既有目标必须是普通文件: ${entry.dest}`);
+    }
+    if (action === 'preserve') {
+      summary.preserved.push(entry.dest);
+      continue;
+    }
+    candidates.push({ ...entry, destPath, action });
   }
 
   for (const { destPath } of candidates) {
-    await assertNoSymlinkPath(targetDir, destPath);
+    await assertNoSymlinkPath(targetDir, destPath, { requireDirectoryParents });
   }
 
   const planned = [];
   for (const candidate of candidates) {
-    const { src, dest, destPath } = candidate;
+    const { src, dest, destPath, action } = candidate;
     let content;
+    let original;
     let source = 'template';
     try {
       if (importRoot && IMPORT_DESTS.has(dest)) {
@@ -53,24 +65,34 @@ export async function scaffold({ templatesRoot, targetDir, vars, tools, onConfli
       if (content === undefined) {
         content = render(await readFile(src, 'utf8'), vars);
       }
+      if (action === 'adopt-entry') {
+        original = await readFile(destPath);
+        const current = original.toString('utf8');
+        if (!original.equals(Buffer.from(current, 'utf8'))) throw new Error('既有入口必须使用 UTF-8');
+        content = adoptManagedBlock(current, content);
+      }
     } catch (err) {
       throw new ScaffoldError({
         phase: 'prepare', dest, destPath, cause: err, summary,
         notWritten: candidates.map(({ dest: pending }) => pending),
       });
     }
-    planned.push({ dest, destPath, content, source });
+    planned.push({ dest, destPath, content, source, action, original });
   }
 
   for (const [index, item] of planned.entries()) {
-    const { dest, destPath, content, source } = item;
+    const { dest, destPath, content, source, action, original } = item;
     try {
       await mkdir(path.dirname(destPath), { recursive: true });
     } catch (err) {
       throw writeError('mkdir', item, err, summary, planned, index);
     }
     try {
-      await writeFile(destPath, content);
+      if (original) {
+        await assertNoSymlinkPath(targetDir, destPath);
+        if (!(await readFile(destPath)).equals(original)) throw new Error('入口在预检后发生变化');
+      }
+      await writeFile(destPath, content, { flag: action === 'create' ? 'wx' : 'w' });
     } catch (err) {
       throw writeError('write', item, err, summary, planned, index);
     }
@@ -81,12 +103,11 @@ export async function scaffold({ templatesRoot, targetDir, vars, tools, onConfli
   return summary;
 }
 
-async function exists(filePath) {
+async function inspect(filePath) {
   try {
-    await lstat(filePath);
-    return true;
+    return await lstat(filePath);
   } catch (err) {
-    if (err.code === 'ENOENT' || err.code === 'ENOTDIR') return false;
+    if (err.code === 'ENOENT' || err.code === 'ENOTDIR') return undefined;
     throw err;
   }
 }

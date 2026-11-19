@@ -22,6 +22,7 @@ const USER_PREFIXES = [
 ];
 
 const MIXED_FILES = new Set(['AGENTS.md', 'CLAUDE.md', '.claude/settings.json']);
+const CLAUDE_SETTINGS = '.claude/settings.json';
 const FRAMEWORK_EXCEPTIONS = new Set(['docs/requirements/README.md', 'docs/design/README.md']);
 
 export function ownershipFor(dest) {
@@ -33,6 +34,18 @@ export function ownershipFor(dest) {
 
 export function hashContent(content) {
   return createHash('sha256').update(content).digest('hex');
+}
+
+function normalizeLineEndings(content) {
+  return content.replaceAll('\r\n', '\n');
+}
+
+function matchesRecordedBaseline(recordedHash, currentHash, current) {
+  if (!recordedHash) return false;
+  if (recordedHash === currentHash) return true;
+  const lf = normalizeLineEndings(current);
+  // Git can convert line endings between the worktree that recorded the hash and this checkout.
+  return recordedHash === hashContent(lf) || recordedHash === hashContent(lf.replaceAll('\n', '\r\n'));
 }
 
 export async function detectInstallation(targetDir) {
@@ -63,12 +76,19 @@ export async function detectInstallation(targetDir) {
 
 export async function writeFrameworkMetadata({
   targetDir, templatesRoot, frameworkVersion, tools, projectName, techStack, date, previousMetadata, schemaVersion,
+  preserveClaudeSettings = false,
 }) {
   const manifest = await buildManifest(templatesRoot, tools);
   const files = {};
   for (const { dest } of manifest) {
+    const previous = previousMetadata?.files[dest];
+    if (dest === CLAUDE_SETTINGS && previous?.ownership === 'user') {
+      files[dest] = previous;
+      continue;
+    }
     const content = await readFile(path.join(targetDir, ...dest.split('/')), 'utf8');
-    files[dest] = { ownership: ownershipFor(dest), sha256: hashContent(content) };
+    const ownership = dest === CLAUDE_SETTINGS && preserveClaudeSettings ? 'user' : ownershipFor(dest);
+    files[dest] = { ownership, sha256: hashContent(content) };
   }
 
   const metadata = {
@@ -111,6 +131,10 @@ export async function planFrameworkUpdate({ targetDir, templatesRoot, frameworkV
   const actions = [];
 
   for (const { src, dest } of manifest) {
+    if (dest === CLAUDE_SETTINGS && installation.metadata?.files[dest]?.ownership === 'user') {
+      actions.push({ action: 'preserve', dest, ownership: 'user' });
+      continue;
+    }
     const desired = render(await readFile(src, 'utf8'), vars);
     const current = await readOptional(path.join(targetDir, ...dest.split('/')));
     const ownership = ownershipFor(dest);
@@ -124,13 +148,13 @@ export async function planFrameworkUpdate({ targetDir, templatesRoot, frameworkV
     if (isManagedBlockFile(dest) && !hasValidManagedBlock(desired)) {
       throw new Error(`受管模板缺少有效 managed 标记: ${dest}`);
     }
-    if (currentHash === desiredHash) {
+    if (currentHash === desiredHash || normalizeLineEndings(current) === normalizeLineEndings(desired)) {
       actions.push({ action: 'unchanged', dest, ownership });
     } else if (ownership === 'user') {
       actions.push({ action: 'preserve', dest, ownership });
     } else {
       const matchesBaseline = installation.kind === 'metadata'
-        ? installation.metadata.files[dest]?.sha256 === currentHash
+        ? matchesRecordedBaseline(installation.metadata.files[dest]?.sha256, currentHash, current)
         : matchesLegacyV01Baseline(dest, current, vars);
       if (isManagedBlockFile(dest) && hasValidManagedBlock(current)) {
         const merged = replaceManagedBlock(current, desired);
@@ -153,7 +177,7 @@ export async function planFrameworkUpdate({ targetDir, templatesRoot, frameworkV
       const currentHash = hashContent(current);
       const canRemove = record.ownership === 'framework'
         && ownershipFor(dest) === 'framework'
-        && record.sha256 === currentHash;
+        && matchesRecordedBaseline(record.sha256, currentHash, current);
       actions.push({
         action: record.ownership === 'user' ? 'preserve' : canRemove ? 'remove' : 'review-remove',
         dest,

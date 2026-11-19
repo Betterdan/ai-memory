@@ -9,6 +9,7 @@
 2. 先用核心记忆校准沟通方式、用户长期约束、项目现状和上次进度；文件为空时直接继续，不臆测补全。
 3. 按任务路由只加载当前需要的方法论和正式产物，禁止一次性读取整个 `.ai/` 与 `docs/`。
 4. 跨模型阶段先按 `skills/model-routing.md` 创建并校验 handoff，不用对话摘要替代正式输入。
+5. 涉及分析、开发、审查或交付时，读取 `knowledge/conventions.md` 并遵循现有约定；有规则索引时，按需加载适用的团队、项目公共及模块规则。个人偏好可细化允许调整的默认项；两条强制规则冲突时，向相应负责人报告具体差异，再继续受影响的步骤。
 
 核心记忆只保留当前有效的精简结论；过期偏好应替换，历史 session 应归档，不以无限增长换取“记得更多”。
 
@@ -24,6 +25,7 @@
 | 了解系统现状 | `knowledge/overview.md` + 相关 `knowledge/entries/`、`knowledge/domains/` |
 | 写入知识 | `skills/knowledge-structure.md` 判断归属与 frontmatter,写完运行 `ai-memory kb build` 再 `kb check` |
 | 0→1、首次基线、重大重构 | `skills/project-inception.md` + 现有 `docs/architecture/` |
+| 已有项目首次接入 | `skills/project-adoption.md` + `knowledge/conventions.md` |
 | 新建需求集合 / 定稿需求点 | `skills/requirements-flow.md` + 相关入口页、领域页与需求文档 |
 | M/L 功能 how | `skills/feature-design.md` + final 需求、相关架构基线与入口页、领域页 |
 | 实现或修复 | final 需求、适用设计/计划；跨模型时再读 `skills/model-routing.md` |
@@ -40,7 +42,7 @@
 - `hooks/` — 门禁启动器 `gate.mjs`(hook 与 pre-commit 经它定位 CLI)与跨工具门禁样例;`ai-memory hooks install` 显式安装,框架不会替你装
 - `knowledge.html` — `kb export` 生成的自包含项目 wiki(含架构基线、需求定稿与技术设计);是生成物,要不要进 Git 由你决定
 - `runs/` — 本地交接清单和阶段回执;默认不进入 Git
-- `skills/` — 方法论层:risk-levels、interface-contract、knowledge-structure、project-inception、requirements-flow、feature-design、delivery-readiness、model-routing、code-review、critic、memory-update
+- `skills/` — 方法论层:risk-levels、interface-contract、knowledge-structure、project-inception、project-adoption、requirements-flow、feature-design、delivery-readiness、model-routing、code-review、critic、memory-update
 
 ## 与工具专属配置的关系
 

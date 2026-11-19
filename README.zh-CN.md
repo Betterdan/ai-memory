@@ -68,6 +68,11 @@ npx @betterdanlins/ai-memory models configure --profile balanced
 
 v0.8.0–v0.11.0 这一轮的完整开发记录——每个需求点、R5/R6/R10 为什么拆、以及只有跑起来才暴露的缺陷——见 [`docs/evolution-r1-r10b.md`](docs/evolution-r1-r10b.md)。
 
+### v0.14.0 —— 已有项目接入
+
+- `init --adopt --yes` 加入受管入口，保留原有 frontmatter、规则、用户文件和 Claude 设置。
+- 接入协议指导规则归并，并结合代码、测试与旧 Wiki 建立第一版知识基线。已使用 ai-memory 的项目可先预览升级，继续使用自己的知识文件和开发约定。
+
 ### v0.13.0 —— Git worktree 并行需求
 
 - Git 门禁识别关联 worktree 和 `core.hooksPath`，不默认覆盖已有 hook，并提示共享路径的影响。
@@ -372,6 +377,14 @@ AGENTS.md + .agents/ + .codex/# Codex:skills 与分层自定义 agents
 
 | 选项 | 说明 |
 | --- | --- |
+### 已有代码与 Wiki 的项目
+
+在尚未使用 ai-memory 的项目根运行 `ai-memory init --adopt --yes`。该模式为所选工具的 `AGENTS.md` / `CLAUDE.md` 加入受管区块，保留顶部的 frontmatter、将原正文留在 user 区块，并生成升级元数据。已有知识、架构等用户文件和 `.claude/settings.json` 保持原样；已有 Claude 设置的 hook 需人工合入。入口已有区块标记、frontmatter 未闭合、路径不安全或其他受管目标冲突时，在写入前报错。已初始化的项目使用 `update --dry-run`。
+
+接着按 `.ai/skills/project-adoption.md` 逐条核对现有规则。等价条款复用，已有条款只补实际差异，新规则按团队、项目公共、模块或个人归属；将共享规则入口放在 `.ai/knowledge/conventions.md`，并在独立 worktree 验证加载。
+
+按协议结合代码、测试和旧 Wiki 建立第一版知识基线，记录代码提交、来源、核验范围和待确认项。把已核验事实提炼进 `.ai/knowledge/` 和 `docs/architecture/`，再执行 `kb build`、`kb check` 和 `kb export`。初始化只生成框架，旧 Wiki 由 Agent 按范围核验，原文继续作为证据。
+
 | `--name <name>` | 项目名(默认取当前目录名) |
 | `--stack <desc>` | 技术栈描述 |
 | `--tools <list>` | 逗号分隔的适配层:`claude`、`codex` |
@@ -381,6 +394,7 @@ AGENTS.md + .agents/ + .codex/# Codex:skills 与分层自定义 agents
 
 ## 工作原理
 
+| `--adopt` | 接入已有项目，保留原入口正文、用户文件和已有 Claude 设置 |
 生成器由一组职责明确的小模块构成:
 
 - **manifest** —— 遍历 `common` / `claude` / `codex` 模板组,只保留已启用工具对应的组,产出一份扁平的 `{src, dest}` 清单;重复目标会在写入前报错并列出来源。

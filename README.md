@@ -68,6 +68,11 @@ What stays a written convention: judging the risk tier, deciding when to split a
 
 The full development record of the v0.8.0–v0.11.0 round — every requirement point, why R5/R6/R10 were split, and the defects that only surfaced once it ran — is in [`docs/evolution-r1-r10b.md`](docs/evolution-r1-r10b.md).
 
+### v0.14.0 — adopt an existing project
+
+- `init --adopt --yes` adds managed entry blocks while preserving existing frontmatter, project rules, user files, and Claude settings.
+- The adoption protocol guides rule consolidation and a first knowledge baseline from code, tests, and an existing wiki. Projects already using ai-memory can preview an upgrade without reinitializing or replacing their knowledge files.
+
 ### v0.13.0 — parallel Git worktrees
 
 - Git gates recognize linked worktrees and `core.hooksPath`, preserve existing hooks by default, and warn when a hook path may be shared.
@@ -374,6 +379,14 @@ Before merging, run `ai-memory gate contract --base dev --point <name>` to inspe
 
 | Option | Description |
 | --- | --- |
+### Existing code and wikis
+
+Run `ai-memory init --adopt --yes` at the root of a project that has not used ai-memory. For the selected tools, adoption adds a managed block to `AGENTS.md` / `CLAUDE.md`, keeps frontmatter at the top and the original body in the user block, and writes upgrade metadata. Existing user files and `.claude/settings.json` are preserved. Integrate hooks manually if you keep existing Claude settings. Existing block markers, unclosed frontmatter, unsafe paths, and other managed file conflicts are reported before writes. For initialized projects, use `update --dry-run`.
+
+Follow `.ai/skills/project-adoption.md` to review rules one by one. Reuse equivalent rules, add only the differences to existing rules, and assign new rules to the team, project, module, or personal scope. Index shared rules in `.ai/knowledge/conventions.md` and verify loading from a separate worktree.
+
+Build the first knowledge baseline from code, tests, and the existing wiki. Record the code revision, evidence, coverage, and open questions. Write verified findings to `.ai/knowledge/` and `docs/architecture/`, then run `kb build`, `kb check`, and `kb export`. Initialization scaffolds the framework. The agent reviews the original wiki within the agreed scope and keeps it as evidence.
+
 | `--name <name>` | Project name (defaults to the current directory name) |
 | `--stack <desc>` | Tech-stack description |
 | `--tools <list>` | Comma-separated adapters to enable: `claude`, `codex` |
@@ -383,6 +396,7 @@ Before merging, run `ai-memory gate contract --base dev --point <name>` to inspe
 
 ## How it works
 
+| `--adopt` | Adopt an existing project while preserving entry file text, user files, and existing Claude settings |
 The generator is a small set of focused modules:
 
 - **manifest** — walks the `common` / `claude` / `codex` template groups, keeping only the groups whose tools are enabled, and produces a flat `{src, dest}` list; duplicate destinations fail before writing and list every source.

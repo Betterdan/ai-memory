@@ -3,7 +3,8 @@ import { Command } from 'commander';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { applyFrameworkUpdate, detectInstallation, METADATA_DEST, planFrameworkUpdate, writeFrameworkMetadata } from '../src/framework.js';
+import { applyFrameworkUpdate, detectInstallation, METADATA_DEST, ownershipFor, planFrameworkUpdate, writeFrameworkMetadata } from '../src/framework.js';
+import { isManagedBlockFile } from '../src/managed-blocks.js';
 import {
   createModelRoutingConfig, MODEL_PROFILES, readModelRoutingConfig,
   resolveModelRouting, writeModelRoutingConfig,
@@ -34,7 +35,8 @@ program
   .option('--tools <list>', '启用工具,逗号分隔:claude,codex')
   .option('--model-profile <profile>', '模型路由策略:inherit,balanced,quality', 'inherit')
   .option('--import <path>', '从已有项目导入 user-profile/feedback')
-  .option('--yes', '非交互模式:缺参用默认值,冲突一律跳过')
+  .option('--adopt', '接入已有项目:加入入口受管区块,保留既有用户文件与 Claude 设置')
+  .option('--yes', '非交互模式:缺参用默认值,未启用 --adopt 时跳过冲突')
   .action(async (opts) => {
     const targetDir = process.cwd();
     const existingInstallation = await detectInstallation(targetDir);
@@ -95,23 +97,31 @@ program
       console.log('未启用任何工具适配,仅生成 .ai/ 通用层');
     }
 
-    const onConflict = opts.yes
-      ? () => 'skip'
-      : async (dest) => {
-          const { confirm } = await import('@inquirer/prompts');
-          return (await confirm({ message: `${dest} 已存在,覆盖?`, default: false })) ? 'overwrite' : 'skip';
-        };
+    const onConflict = async (dest) => {
+      if (opts.adopt) {
+        if (isManagedBlockFile(dest)) return 'adopt-entry';
+        if (ownershipFor(dest) === 'user' || dest === '.claude/settings.json') return 'preserve';
+        throw new Error(`已有受管目标冲突: ${dest};请核对原文件与模板后重新运行 init --adopt`);
+      }
+      if (opts.yes) return 'skip';
+      const { confirm } = await import('@inquirer/prompts');
+      return (await confirm({ message: `${dest} 已存在,覆盖?`, default: false })) ? 'overwrite' : 'skip';
+    };
 
     const date = new Date().toISOString().slice(0, 10);
     const vars = {
       projectName: name, techStack: stack, date, modelProfile: opts.modelProfile, frameworkVersion: PACKAGE.version,
     };
-    const r = await scaffold({ templatesRoot: TEMPLATES, targetDir, vars, tools, onConflict, importFrom });
+    const r = await scaffold({
+      templatesRoot: TEMPLATES, targetDir, vars, tools, onConflict, importFrom,
+      requireDirectoryParents: opts.adopt,
+    });
     if (r.skipped.length === 0) {
       try {
         await writeFrameworkMetadata({
           targetDir, templatesRoot: TEMPLATES, frameworkVersion: PACKAGE.version,
           tools, projectName: name, techStack: stack, date,
+          preserveClaudeSettings: r.preserved.includes('.claude/settings.json'),
         });
         r.written.push(METADATA_DEST);
       } catch (err) {
@@ -128,7 +138,11 @@ program
     if (r.imported.length) for (const d of r.imported) console.log(`  已导入 ${d}`);
     if (r.fallback.length) for (const d of r.fallback) console.log(`  导入源缺失,使用模板 ${d}`);
     if (r.skipped.length) for (const d of r.skipped) console.log(`  跳过 ${d}`);
-    console.log('下一步:打开项目让 agent 读 .ai/README.md;把项目命令补进 CLAUDE.md/AGENTS.md 的 user 区块。');
+    if (r.preserved.length) for (const d of r.preserved) console.log(`  保留 ${d}`);
+    if (r.preserved.includes('.claude/settings.json')) console.log('已保留原 Claude 设置;需要启用 ai-memory Hook 时请人工合入。');
+    console.log(opts.adopt
+      ? '下一步:按 .ai/skills/project-adoption.md 归并规则并核验知识基线。'
+      : '下一步:打开项目让 agent 读 .ai/README.md;把项目命令补进 CLAUDE.md/AGENTS.md 的 user 区块。');
     if (!gateCliReachable({ targetDir })) console.log(CLI_HINT);
   });
 

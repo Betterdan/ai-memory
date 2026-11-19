@@ -42,6 +42,7 @@ export const EXPECTED_COMMON = [
   '.ai/skills/knowledge-structure.md',
   '.ai/skills/memory-update.md',
   '.ai/skills/model-routing.md',
+  '.ai/skills/project-adoption.md',
   '.ai/skills/project-inception.md',
   '.ai/skills/requirements-flow.md',
   '.ai/skills/risk-levels.md',

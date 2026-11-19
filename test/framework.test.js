@@ -103,6 +103,25 @@ test('v0.4 无标记混合文件仅在匹配生成基线时自动迁移', async 
   assert.ok(modified.actions.some(item => item.dest === 'AGENTS.md' && item.action === 'merge'));
 });
 
+test('升级接受 Git checkout 导致的换行转换,仍拦截真正的框架修改', async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-update-eol-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await mkdir(path.join(dir, '.ai'), { recursive: true });
+  const dest = '.ai/README.md';
+  const installed = '# v0.13.0\n\n原框架入口\n';
+  const checkedOut = installed.replaceAll('\n', '\r\n');
+  await writeFile(path.join(dir, dest), checkedOut);
+  await writeFile(path.join(dir, '.ai', 'ai-memory.json'), JSON.stringify({
+    frameworkVersion: '0.13.0', schemaVersion: 2, tools: [],
+    templateVars: { projectName: 'existing', techStack: 'Go', date: '2026-11-19' },
+    files: { [dest]: { ownership: 'framework', sha256: hashContent(installed) } },
+  }));
+  const planUpdate = () => planFrameworkUpdate({ targetDir: dir, templatesRoot: TEMPLATES, frameworkVersion: '0.14.0' });
+  assert.equal((await planUpdate()).actions.find(item => item.dest === dest).action, 'update');
+  await writeFile(path.join(dir, dest), checkedOut + '用户修改\r\n');
+  assert.equal((await planUpdate()).actions.find(item => item.dest === dest).action, 'review');
+});
+
 test('已移除的未修改框架文件可安全删除,用户修改后要求确认', async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'aim-safe-remove-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
