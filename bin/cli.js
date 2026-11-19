@@ -318,7 +318,7 @@ kb
 
 kb
   .command('export')
-  .description('把知识层、架构基线、需求定稿与技术设计导出为一个自包含 HTML')
+  .description('把项目知识、架构、需求、规则、接入资料和 docs/wiki 导出为单个离线 HTML')
   .option('--out <path>', '输出路径', DEFAULT_OUT)
   .option('--mermaid <path>', '使用本地 mermaid.min.js,供离线或内网环境')
   .option('--no-download', '不联网获取 mermaid;没有缓存时图降级为代码块')

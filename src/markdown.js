@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { marked } from 'marked';
+import { Marked, marked } from 'marked';
+import { headingSlug } from './wiki-links.js';
 
 // 单张图片内联上限:超过就跳过,避免一张大图把单文件撑爆
 export const IMAGE_LIMIT = 2 * 1024 * 1024;
@@ -18,8 +19,46 @@ const MIME = {
 
 // 知识页与文档是本仓库自己的文件,与源码同等信任,因此不净化内联 HTML。
 // 这是「支持任意 Markdown」的必然含义;若将来引入外部来源内容,此处需重新评估。
-export function renderMarkdown(body) {
-  return marked.parse(body, { async: false });
+export function renderMarkdown(body, { pageId, link, wikiLink } = {}) {
+  if (!pageId) return marked.parse(body, { async: false });
+  const used = new Set();
+  const parser = new Marked({
+    renderer: {
+      heading({ depth, tokens }) {
+        const slug = headingSlug(this.parser.parseInline(tokens, this.parser.textRenderer)) || 'section';
+        let id = slug;
+        for (let index = 1; used.has(id); index++) id = `${slug}-${index}`;
+        used.add(id);
+        return `<h${depth} id="${escapeHtml(`${pageId}:${id}`)}">${this.parser.parseInline(tokens)}</h${depth}>\n`;
+      },
+      link({ href, tokens, title }) {
+        const resolved = link(href);
+        return resolved === href ? false : renderLink(resolved, this.parser.parseInline(tokens),
+          title || (resolved.startsWith('#') ? '' : '项目文件，需与项目目录一同打开'));
+      },
+    },
+    extensions: wikiLink ? [{
+      name: 'projectWikiLink',
+      level: 'inline',
+      start: source => source.indexOf('[['),
+      tokenizer(source) {
+        const match = /^\[\[([^\[\]\r\n]+)\]\]/.exec(source);
+        if (!match) return undefined;
+        const [target, label = target] = match[1].split('|', 2);
+        return { type: 'projectWikiLink', raw: match[0], target: target.trim(), label };
+      },
+      renderer({ target, label }) {
+        const href = wikiLink(target);
+        return href ? renderLink(href, escapeHtml(label)) : `<span title="无法定位 Wiki 文档">${escapeHtml(label)}</span>`;
+      },
+    }] : [],
+  });
+  return parser.parse(body, { async: false });
+}
+
+function renderLink(href, content, title) {
+  const hint = title ? ` title="${escapeHtml(title)}"` : '';
+  return `<a href="${escapeHtml(href)}"${hint}>${content}</a>`;
 }
 
 export async function inlineImages(html, { baseDir, warnings = [] } = {}) {

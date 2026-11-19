@@ -114,6 +114,7 @@ function homeArticle(overview) {
     ['需求点定稿', counts.requirements],
     ['技术设计', counts.designs],
     ['决策记录', counts.decisions],
+    ...(counts.wiki ? [['项目 Wiki', counts.wiki]] : []),
   ].map(([label, value]) => `<span class="chip"><b>${value}</b> ${escapeHtml(label)}</span>`).join('');
 
   const decisionNote = counts.decisions
@@ -143,7 +144,7 @@ function isEmpty(overview) {
   const counts = overview.counts;
   return !overview.points.length
     && counts.entries === 0 && counts.domains === 0
-    && counts.decisions === 0 && counts.requirements === 0;
+    && counts.decisions === 0 && counts.requirements === 0 && !counts.wiki;
 }
 
 function gettingStarted() {
@@ -257,7 +258,8 @@ const SCRIPT = `
     if(menu){ menu.setAttribute('aria-expanded','false'); menu.setAttribute('aria-label','打开导航'); }
   }
 
-  function show(id){
+  function show(hash){
+    var id=hash.split(':',1)[0];
     var menuWasOpen=sidebar && sidebar.classList.contains('open');
     var found=false;
     pages.forEach(function(page){
@@ -273,7 +275,8 @@ const SCRIPT = `
     });
     closeMenu();
     if(menuWasOpen && main) main.focus({preventScroll:true});
-    window.scrollTo(0,0);
+    var anchor=found && hash!==id && document.getElementById(hash);
+    if(anchor) anchor.scrollIntoView(); else window.scrollTo(0,0);
     if(window.__renderMermaid) window.__renderMermaid();
   }
 

@@ -68,6 +68,12 @@ npx @betterdanlins/ai-memory models configure --profile balanced
 
 v0.8.0–v0.11.0 这一轮的完整开发记录——每个需求点、R5/R6/R10 为什么拆、以及只有跑起来才暴露的缺陷——见 [`docs/evolution-r1-r10b.md`](docs/evolution-r1-r10b.md)。
 
+### v0.15.0 —— 完整离线 Wiki 与暂存区门禁
+
+- Wiki 新增项目规则、接入记录及 `docs/wiki/` 中的已审阅 Markdown。页面、章节和 Obsidian 双链在 HTML 内跳转，其他项目文件的相对链接按输出位置计算。
+- Wiki 主题跟随系统深浅色，优化了手机布局、焦点与导航。
+- 新版 pre-commit 样例按 Git 暂存区检查需求和接口配置。运行 `hooks status` 可识别旧样例，更新已安装的 hook 前请核对同仓库其他 worktree。
+
 ### v0.14.0 —— 已有项目接入
 
 - `init --adopt --yes` 加入受管入口，保留原有 frontmatter、规则、用户文件和 Claude 设置。
@@ -295,6 +301,10 @@ npx @betterdanlins/ai-memory@0.11.2 kb export
 
 页面适配手机屏幕，并跟随系统切换深浅色。要让已有 HTML 使用当前主题，重新运行 `kb export` 即可。
 
+导出也会递归收录 `.ai/knowledge/rules/`、`docs/adoption/` 和 `docs/wiki/` 下的 Markdown，包括子目录和 README。将要收录的已审阅资料放到 `docs/wiki/`，保留原目录结构。这里支持 `[[页面#章节|显示名]]`，目标未收录或名称不唯一时会保留文字并提示。
+
+已收录页面和章节在 HTML 内跳转。指向其他项目文件的 Markdown 相对链接按输出位置计算，使用 `--out` 也适用；需要查看外部附件时，仍需保留相应项目文件。HTML 是导出快照，需求完成后流程会更新 Markdown 知识层，重新运行 `kb export` 即可刷新已有 HTML。
+
 如果页面里有 Mermaid 图,首次导出会下载一次固定版本的渲染器(约 3.4MB)并缓存到全局,之后的导出和其他项目都复用该缓存。机器不能联网时用 `--no-download` 让图回退为代码块,或用 `--mermaid <路径>` 自己提供 bundle。
 
 ## 生成什么
@@ -358,7 +368,7 @@ AGENTS.md + .agents/ + .codex/# Codex:skills 与分层自定义 agents
 | `gate contract --base <基线> --point <需求点>` | 只读检查共同祖先到当前 HEAD 的已提交差异；缺少基线或共同祖先时报错 |
 | `worktree select --point <需求点>` / `worktree status` / `worktree clear` | 选择、查看或清除当前工作区的活动需求，仅影响默认就绪和契约门禁 |
 | `hooks install [--force]` / `hooks status` | 安装跨工具的 git pre-commit 门禁,让 Codex 等工具也有强制 |
-| `kb export [--out <路径>] [--mermaid <路径>] [--no-download]` | 把知识层、架构基线、需求定稿与技术设计导出为一个自包含 HTML,打开就能看清项目全貌与进度;mermaid 图离线可渲染,渲染器按固定版本取一次并缓存 |
+| `kb export [--out <路径>] [--mermaid <路径>] [--no-download]` | 把知识层、架构、需求、设计、项目规则、接入资料与 `docs/wiki/` 导出为单个离线 HTML；Mermaid 渲染器按固定版本取一次并缓存 |
 | `models show` | 显示当前 profile 和每个阶段解析后的模型等级 |
 | `models configure --profile <name>` | 选择 `inherit`、`balanced` 或 `quality`,不修改需求、设计或代码 |
 | `workflow prepare` | 用正式输入文档的哈希创建本地交接清单 |

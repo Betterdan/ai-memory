@@ -5,6 +5,8 @@ import { parseFrontmatter } from './frontmatter.js';
 import { activateMermaid, extractTitle, hasMermaid, inlineImages, renderMarkdown } from './markdown.js';
 import { resolveMermaid } from './mermaid-asset.js';
 import { parsePoints } from './iterations.js';
+import { assertNoSymlinkPath } from './path-safety.js';
+import { wikiLinks } from './wiki-links.js';
 
 export { parsePoints };
 
@@ -21,6 +23,9 @@ const SOURCES = [
   { group: '技术设计', nested: 'docs/design' },
   { group: '迭代记录', files: ['.ai/knowledge/iterations.md'] },
   { group: '开发约定', files: ['.ai/knowledge/conventions.md'] },
+  { group: '开发规则', tree: '.ai/knowledge/rules' },
+  { group: '接入资料', tree: 'docs/adoption' },
+  { group: '项目 Wiki', tree: 'docs/wiki', groupByFolder: true },
 ];
 
 export async function exportKnowledge({
@@ -29,29 +34,41 @@ export async function exportKnowledge({
 }) {
   const warnings = [];
   const pages = [];
-  const seen = new Map();
+  const seen = new Set();
+  const destination = path.resolve(targetDir, out);
 
   for (const source of SOURCES) {
     for (const rel of await collectFiles(targetDir, source)) {
-      const body = await readFile(path.join(targetDir, ...rel.split('/')), 'utf8');
-      const parsed = parseFrontmatter(body);
-      const content = parsed ? parsed.rest : body;
-      const html = await inlineImages(renderMarkdown(content), {
-        baseDir: path.dirname(path.join(targetDir, ...rel.split('/'))),
-        warnings,
-      });
+      const folder = source.groupByFolder
+        ? path.posix.relative(source.tree, path.posix.dirname(rel)).split('/').slice(0, 2).join(' / ')
+        : '';
       pages.push({
         id: uniqueId(rel, seen),
-        group: source.group,
-        title: extractTitle(content, path.basename(rel, '.md')),
+        group: folder ? `${source.group} · ${folder}` : source.group,
         source: rel,
-        html,
-        frontmatter: parsed ? parsed.data : {},
       });
     }
   }
 
-  rewriteLinks(pages);
+  const links = wikiLinks(pages, { targetDir, destination });
+  for (const page of pages) {
+    const sourcePath = path.join(targetDir, ...page.source.split('/'));
+    const body = await readFile(sourcePath, 'utf8');
+    const parsed = parseFrontmatter(body);
+    const content = parsed ? parsed.rest : body;
+    page.title = extractTitle(content, path.posix.basename(page.source).replace(/\.md$/i, ''));
+    page.frontmatter = parsed ? parsed.data : {};
+    const rendered = content.trim() ? renderMarkdown(content, {
+      pageId: page.id,
+      link: href => links.markdown(page, href),
+      wikiLink: page.source.startsWith('docs/wiki/') ? target => links.obsidian(page, target) : undefined,
+    }) : '<p class="muted">此文档暂无正文。</p>';
+    page.html = await inlineImages(rendered, { baseDir: path.dirname(sourcePath), warnings });
+  }
+  if (links.unresolved.size) {
+    const sample = [...links.unresolved].slice(0, 8).join('、');
+    warnings.push(`项目 Wiki 中 ${links.unresolved.size} 个双链目标不存在或不唯一，已保留文字：${sample}`);
+  }
 
   const overview = await buildOverview(targetDir, pages);
 
@@ -68,7 +85,6 @@ export async function exportKnowledge({
   }
 
   const html = buildHtml({ overview, pages, generatedAt: now.toISOString().slice(0, 10), mermaidSource });
-  const destination = path.resolve(targetDir, out);
   await mkdir(path.dirname(destination), { recursive: true });
   await writeFile(destination, html);
 
@@ -80,26 +96,6 @@ export async function exportKnowledge({
   };
 }
 
-// 单文件里不存在 .md 源文件:指向已导出页面的相对链接改成页内跳转,
-// 没导出的文件(契约、源码等)和外链保持原样
-function rewriteLinks(pages) {
-  const bySource = new Map(pages.map(page => [page.source, page.id]));
-  for (const page of pages) {
-    const base = path.posix.dirname(page.source);
-    page.html = page.html.replace(/href="([^"]+)"/g, (match, href) => {
-      if (/^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('//') || href.startsWith('#') || href.startsWith('/')) return match;
-      let target;
-      try {
-        target = decodeURIComponent(href.split('#')[0].split('?')[0]);
-      } catch {
-        return match;
-      }
-      const id = bySource.get(path.posix.normalize(path.posix.join(base, target)));
-      return id ? `href="#${id}"` : match;
-    });
-  }
-}
-
 async function collectFiles(targetDir, source) {
   const found = [];
   if (source.files) {
@@ -107,6 +103,10 @@ async function collectFiles(targetDir, source) {
       if (await exists(path.join(targetDir, ...rel.split('/')))) found.push(rel);
     }
     return found;
+  }
+  if (source.tree) {
+    await assertNoSymlinkPath(targetDir, path.join(targetDir, source.tree));
+    return listMarkdownTree(targetDir, source.tree);
   }
   if (source.dir) return listMarkdown(targetDir, source.dir);
   if (source.nested) {
@@ -116,6 +116,24 @@ async function collectFiles(targetDir, source) {
     }
   }
   return found;
+}
+
+async function listMarkdownTree(targetDir, rel) {
+  let entries;
+  try {
+    entries = await readdir(path.join(targetDir, ...rel.split('/')), { withFileTypes: true });
+  } catch (err) {
+    if (err.code === 'ENOENT' || err.code === 'ENOTDIR') return [];
+    throw err;
+  }
+  const found = [];
+  for (const entry of entries) {
+    if (entry.name.startsWith('.')) continue;
+    const child = `${rel}/${entry.name}`;
+    if (entry.isDirectory()) found.push(...await listMarkdownTree(targetDir, child));
+    else if (entry.isFile() && /\.md$/i.test(entry.name)) found.push(child);
+  }
+  return found.sort();
 }
 
 async function listMarkdown(targetDir, rel) {
@@ -162,6 +180,7 @@ async function buildOverview(targetDir, pages) {
       decisions: decisions.length,
       activeDecisions: decisions.filter(page => page.frontmatter.status !== 'superseded').length,
       supersededDecisions: decisions.filter(page => page.frontmatter.status === 'superseded').length,
+      wiki: pages.filter(page => page.source.startsWith('docs/wiki/')).length,
     },
   };
 }
@@ -173,10 +192,11 @@ function field(body, label) {
 }
 
 function uniqueId(rel, seen) {
-  const base = rel.replace(/\.md$/, '').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').toLowerCase();
-  const count = (seen.get(base) ?? 0) + 1;
-  seen.set(base, count);
-  return count === 1 ? base : `${base}-${count}`;
+  const base = rel.replace(/\.md$/i, '').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').toLowerCase();
+  let id = base;
+  for (let index = 2; seen.has(id); index++) id = `${base}-${index}`;
+  seen.add(id);
+  return id;
 }
 
 async function exists(filePath) {

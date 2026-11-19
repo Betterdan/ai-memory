@@ -68,6 +68,12 @@ What stays a written convention: judging the risk tier, deciding when to split a
 
 The full development record of the v0.8.0–v0.11.0 round — every requirement point, why R5/R6/R10 were split, and the defects that only surfaced once it ran — is in [`docs/evolution-r1-r10b.md`](docs/evolution-r1-r10b.md).
 
+### v0.15.0 — fuller offline Wiki and staged commit gates
+
+- The Wiki adds project rules, adoption records, and reviewed Markdown under `docs/wiki/`. Page links, section links, and Obsidian-style wiki links work within the exported HTML. Links to other project files are relative to the output location.
+- The Wiki theme follows system colors and fits mobile screens, with clearer focus and navigation.
+- The updated pre-commit sample checks requirements and interface rules in the Git index. Run `hooks status` to identify older samples and review shared worktrees before updating an installed hook.
+
 ### v0.14.0 — adopt an existing project
 
 - `init --adopt --yes` adds managed entry blocks while preserving existing frontmatter, project rules, user files, and Claude settings.
@@ -297,6 +303,10 @@ The output lands at `.ai/knowledge.html`. It is a generated artifact: commit it 
 
 The layout adapts to mobile screens and follows the system's light or dark color scheme. Run `kb export` again to refresh an existing HTML file with the current theme.
 
+The export also includes Markdown under `.ai/knowledge/rules/`, `docs/adoption/`, and `docs/wiki/`, including nested folders and their README files. Copy the reviewed material you want in the Wiki to `docs/wiki/`, keeping its folder layout. This directory accepts `[[page#section|label]]` links. A target outside the export or with an ambiguous name is shown as text with a warning.
+
+Links between exported pages and sections open within the HTML. Relative Markdown links to other project files are resolved from the output location, including when you set `--out`. Keep the project files nearby if readers need those attachments. The offline HTML is a snapshot. A completed requirement updates the Markdown knowledge layer through the workflow. Run `kb export` again to refresh an existing HTML file.
+
 If your pages contain Mermaid diagrams, the first export downloads the pinned renderer once (about 3.4MB) and caches it globally; later exports and other projects reuse that cache. On a machine with no network, pass `--no-download` to fall back to code blocks, or `--mermaid <path>` to supply the bundle yourself.
 
 ## What it generates
@@ -360,7 +370,7 @@ AGENTS.md + .agents/ + .codex/# Codex: skills and model-specific custom agents
 | `gate contract --base <ref> --point <name>` | Checks committed changes from the merge base to HEAD for one requirement point; fails if the base or merge base is unavailable |
 | `worktree select --point <name>` / `worktree status` / `worktree clear` | Select, inspect or clear the current worktree's active point for the default readiness and contract gates |
 | `hooks install [--force]` / `hooks status` | Installs the tool-neutral git pre-commit gate, so Codex and other tools get enforcement too |
-| `kb export [--out <path>] [--mermaid <path>] [--no-download]` | Exports the knowledge layer, architecture baseline, finalized requirements and designs into one self-contained HTML — open it and see what the project is and how far it got. Mermaid diagrams render offline; the pinned renderer is fetched once and cached |
+| `kb export [--out <path>] [--mermaid <path>] [--no-download]` | Exports the knowledge layer, architecture, requirements, designs, project rules, adoption records and `docs/wiki/` into one offline HTML. Mermaid uses a pinned renderer that is fetched once and cached |
 | `models show` | Show the selected profile and resolved tier for every workflow stage |
 | `models configure --profile <name>` | Select `inherit`, `balanced`, or `quality` without changing requirements, designs, or code |
 | `workflow prepare` | Create a local handoff manifest with hashes of formal input documents |
